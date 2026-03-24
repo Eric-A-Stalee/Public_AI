@@ -31,6 +31,18 @@
         display: none !important;
       }
 
+      /* Temporarily visible so Recharts can measure & paint SVGs.
+         Positioned offscreen so the user doesn't see a flash. */
+      .print-ready.print-only {
+        display: block !important;
+        position: fixed !important;
+        left: -9999px !important;
+        top: 0 !important;
+        width: 7.5in !important;       /* letter minus margins */
+        visibility: visible !important;
+        z-index: -1 !important;
+      }
+
       @media print {
         /* --- Hide the React app root entirely during print --- */
         #root {
@@ -201,28 +213,55 @@
       }
     </style>
 
-    <!-- Move #print-all-container out of the React flex tree during print
-         so that CSS page-break/break-before actually works. Flex containers
-         silently suppress page breaks per the CSS spec. By moving the node
-         to be a direct child of <body>, it lives in a pure block context. -->
+    <!--
+      Print pipeline:
+      1. Override window.print() so we control timing
+      2. Move #print-all-container to <body> (escapes flex → page breaks work)
+      3. Make it visible so Recharts SVGs can measure & paint
+      4. Wait 800ms for charts to render
+      5. Call the real window.print()
+      6. On afterprint, hide it and move it back into React tree
+    -->
     <script>
       (function () {
-        var container, reactParent;
+        var realPrint = window.print.bind(window);
+        var container, reactParent, printing = false;
 
-        window.addEventListener("beforeprint", function () {
-          container = document.getElementById("print-all-container");
-          if (!container) return;
-          reactParent = container.parentNode;
-          document.body.appendChild(container);
-        });
-
+        /* Restore DOM after print dialog closes */
         window.addEventListener("afterprint", function () {
           if (container && reactParent) {
+            container.style.display = "";          /* re-hide via .print-only */
+            container.classList.remove("print-ready");
             reactParent.appendChild(container);
             container = null;
             reactParent = null;
           }
+          printing = false;
         });
+
+        window.print = function () {
+          if (printing) return;
+          printing = true;
+
+          container = document.getElementById("print-all-container");
+          if (!container) { realPrint(); return; }
+
+          reactParent = container.parentNode;
+
+          /* Step 1: move out of flex tree onto <body> */
+          document.body.appendChild(container);
+
+          /* Step 2: force visible so charts can render their SVGs */
+          container.style.display = "block";
+          container.classList.add("print-ready");
+
+          /* Step 3: give Recharts time to measure & paint, then print */
+          setTimeout(function () {
+            /* Hide on-screen (we only want it in the print stream) */
+            container.style.display = "";
+            realPrint();
+          }, 800);
+        };
       })();
     </script>
   </head>
