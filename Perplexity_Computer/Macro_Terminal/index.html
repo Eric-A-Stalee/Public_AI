@@ -24,13 +24,33 @@
     <script type="module" crossorigin src="./assets/index-BswlGUjW.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-qmlA54SX.css">
     <style id="bulk-print-styles">
-      /* ===== Bulk Print Styles — Perplexity Macro Terminal ===== */
+      /* ===== Bulk Print — Perplexity Macro Terminal ===== */
 
-      /* Hide no-print elements on screen too (they only show in print-all view) */
-      .no-print { display: flex; }
+      /* On screen: hide the print-only container completely */
+      .print-only {
+        display: none !important;
+      }
 
       @media print {
-        /* --- Override terminal dark theme to printer-friendly palette --- */
+        /* --- Show print container, hide screen-only content --- */
+        .print-only {
+          display: block !important;
+        }
+        .screen-only {
+          display: none !important;
+        }
+
+        /* --- Hide tab bar, header bar, nav chrome, scanlines --- */
+        .scanline::before,
+        .scanline::after {
+          display: none !important;
+        }
+        /* Hide the tab row and header bar in print */
+        .shrink-0 {
+          display: none !important;
+        }
+
+        /* --- Override terminal dark theme to printer-friendly --- */
         :root {
           --term-green: 142 30% 20% !important;
           --term-red: 0 72% 40% !important;
@@ -63,33 +83,24 @@
           color: #1a1a2e !important;
         }
 
-        /* --- Hide UI chrome: buttons, status text, scanlines --- */
-        .no-print {
-          display: none !important;
-        }
-        .scanline::before,
-        .scanline::after {
-          display: none !important;
-        }
-
         /* --- Page setup --- */
         @page {
           size: letter;
           margin: 0.6in 0.5in;
         }
 
-        /* --- Section page breaks (each tab on its own page) --- */
-        section {
+        /* --- Each tab section on its own page --- */
+        .print-section {
           page-break-after: always !important;
           break-after: page !important;
         }
-        section:last-child {
+        .print-section:last-child {
           page-break-after: avoid !important;
           break-after: auto !important;
         }
 
         /* --- Prevent orphaned elements inside sections --- */
-        section * {
+        .print-section * {
           page-break-inside: avoid;
           break-inside: avoid;
         }
@@ -99,8 +110,7 @@
           background-color: #fff !important;
         }
         [class*="bg-[hsl(var(--term-bg"])],
-        [class*="bg-[hsl(var(--term-surface"])],
-        .print-all-view {
+        [class*="bg-[hsl(var(--term-surface")] {
           background-color: #fff !important;
         }
 
@@ -120,7 +130,7 @@
           color: #b8860b !important;
         }
 
-        /* --- Section headers: bold with underline --- */
+        /* --- Section headers: numbered, bold with underline --- */
         .section-label {
           color: #1a1a2e !important;
           font-size: 14pt !important;
