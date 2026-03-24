@@ -32,42 +32,14 @@
       }
 
       @media print {
-        /* --- CRITICAL: Break out of flex layout so page breaks work --- */
-        /* Page breaks are completely ignored inside flex containers.    */
-        /* Every ancestor of .print-section must be display:block.      */
-        .h-screen,
-        .flex-col,
-        #root,
-        #root > div,
-        #print-all-container {
-          display: block !important;
-          flex-direction: unset !important;
-          height: auto !important;
-          min-height: auto !important;
-          overflow: visible !important;
-          position: static !important;
+        /* --- Hide the React app root entirely during print --- */
+        #root {
+          display: none !important;
         }
 
-        /* --- Show print container, hide screen-only content --- */
+        /* --- Show the print container (lives on <body> during print) --- */
         .print-only {
           display: block !important;
-        }
-        .screen-only {
-          display: none !important;
-        }
-
-        /* --- Hide tab bar, header bar, nav chrome, scanlines --- */
-        .scanline::before,
-        .scanline::after {
-          display: none !important;
-        }
-        /* Hide the tab row and header bar in print */
-        .shrink-0 {
-          display: none !important;
-        }
-        /* Hide the GC time header component */
-        .scanline > :first-child {
-          display: none !important;
         }
 
         /* --- Override terminal dark theme to printer-friendly --- */
@@ -98,9 +70,11 @@
           print-color-adjust: exact !important;
         }
 
-        html, body, #root {
+        html, body {
           background: #fff !important;
           color: #1a1a2e !important;
+          height: auto !important;
+          overflow: visible !important;
         }
 
         /* --- Page setup --- */
@@ -109,18 +83,37 @@
           margin: 0.6in 0.5in;
         }
 
+        /* --- #print-all-container is a direct child of <body> during print,
+               completely outside the flex layout. Page breaks now work. --- */
+        #print-all-container {
+          display: block !important;
+          position: static !important;
+          overflow: visible !important;
+          width: 100% !important;
+          background: #fff !important;
+        }
+
         /* --- Each tab section on its own page --- */
         .print-section {
           display: block !important;
           page-break-before: always !important;
           break-before: page !important;
-          page-break-inside: auto !important;
-          break-inside: auto !important;
         }
-        /* First section: no break before (title page flows into it) */
+        /* First section flows after the title header */
         .print-section:first-of-type {
           page-break-before: avoid !important;
           break-before: auto !important;
+        }
+
+        /* --- Unlock overflow/height inside sections so nothing clips --- */
+        #print-all-container *  {
+          overflow: visible !important;
+          max-height: none !important;
+        }
+        #print-all-container .h-screen,
+        #print-all-container .min-h-screen {
+          height: auto !important;
+          min-height: auto !important;
         }
 
         /* --- Dark backgrounds → white for print --- */
@@ -199,24 +192,6 @@
           break-inside: avoid;
         }
 
-        /* --- Unlock overflow/height so content isn't clipped --- */
-        .overflow-y-auto,
-        .overflow-hidden,
-        .overflow-x-auto,
-        .overscroll-contain {
-          overflow: visible !important;
-        }
-        .min-h-screen {
-          min-height: auto !important;
-        }
-        .max-h-screen,
-        [class*="max-h-"] {
-          max-height: none !important;
-        }
-        .flex-1 {
-          flex: none !important;
-        }
-
         /* --- Links: show URLs on paper --- */
         a[href]:after {
           content: " (" attr(href) ")";
@@ -225,6 +200,31 @@
         }
       }
     </style>
+
+    <!-- Move #print-all-container out of the React flex tree during print
+         so that CSS page-break/break-before actually works. Flex containers
+         silently suppress page breaks per the CSS spec. By moving the node
+         to be a direct child of <body>, it lives in a pure block context. -->
+    <script>
+      (function () {
+        var container, reactParent;
+
+        window.addEventListener("beforeprint", function () {
+          container = document.getElementById("print-all-container");
+          if (!container) return;
+          reactParent = container.parentNode;
+          document.body.appendChild(container);
+        });
+
+        window.addEventListener("afterprint", function () {
+          if (container && reactParent) {
+            reactParent.appendChild(container);
+            container = null;
+            reactParent = null;
+          }
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
