@@ -38740,8 +38740,12 @@ function VP() {
   });
 }
 function cW() {
+  const [printReady, setPrintReady] = te.useState(false);
   te.useEffect(() => {
-    const e = setTimeout(() => window.print(), 300);
+    const e = setTimeout(() => {
+      setPrintReady(true);
+      setTimeout(() => window.print(), 200);
+    }, 1500);
     return () => clearTimeout(e);
   }, []);
   const t = [
@@ -38753,13 +38757,38 @@ function cW() {
     { id: "sentiment", label: "RISK", component: oW },
   ];
   return j.jsxs("div", {
-    className: "min-h-screen bg-[hsl(220,20%,4%)] p-4",
+    className: "min-h-screen bg-[hsl(220,20%,4%)] p-4 print-all-view",
     children: [
+      j.jsxs("div", {
+        className: "mb-6 print-header flex items-center justify-between",
+        children: [
+          j.jsx("h1", {
+            className: "text-[hsl(var(--term-green))] text-lg tracking-wider",
+            children: "PERPLEXITY MACRO TERMINAL — FULL REPORT",
+          }),
+          j.jsxs("div", {
+            className: "flex items-center gap-4 no-print",
+            children: [
+              !printReady && j.jsx("span", {
+                className: "text-[hsl(var(--term-amber))] text-xs tracking-wider animate-pulse",
+                children: "PREPARING REPORT...",
+              }),
+              j.jsx("button", {
+                onClick: () => window.print(),
+                className:
+                  "px-4 py-2 border border-[hsl(var(--term-green))] text-[hsl(var(--term-green))] hover:bg-[hsl(var(--term-green)/0.1)] transition-colors text-xs tracking-wider " +
+                  (printReady ? "" : "opacity-50 cursor-wait"),
+                children: "PRINT REPORT",
+              }),
+            ],
+          }),
+        ],
+      }),
       j.jsx("div", {
-        className: "mb-6",
-        children: j.jsx("h1", {
-          className: "text-[hsl(var(--term-green))] text-lg tracking-wider",
-          children: "PERPLEXITY MACRO TERMINAL — FULL REPORT",
+        className: "mb-4 no-print",
+        children: j.jsx("p", {
+          className: "text-[hsl(var(--term-dim))] text-xs",
+          children: "All tabs rendered below. Each section will print on its own page.",
         }),
       }),
       t.map((e, r) =>
@@ -38771,7 +38800,7 @@ function cW() {
             children: [
               j.jsx("h2", {
                 className:
-                  "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3",
+                  "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label",
                 children: e.label,
               }),
               j.jsx(e.component, {}),
