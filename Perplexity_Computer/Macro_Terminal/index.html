@@ -31,6 +31,97 @@
         display: none !important;
       }
 
+      /* --- Print options dialog --- */
+      #print-options-dialog {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+      }
+      #print-options-dialog.open {
+        display: flex;
+      }
+      #print-options-dialog .dialog-box {
+        background: hsl(220 20% 12%);
+        border: 1px solid hsl(142 40% 35%);
+        border-radius: 8px;
+        padding: 24px 32px;
+        min-width: 320px;
+        font-family: 'Fira Code', 'JetBrains Mono', monospace;
+        color: hsl(142 40% 60%);
+        box-shadow: 0 0 30px rgba(0,255,100,0.08);
+      }
+      #print-options-dialog h3 {
+        margin: 0 0 16px;
+        font-size: 13px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: hsl(142 40% 50%);
+        border-bottom: 1px solid hsl(220 15% 25%);
+        padding-bottom: 8px;
+      }
+      #print-options-dialog .orient-btn {
+        display: block;
+        width: 100%;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        background: hsl(220 15% 16%);
+        border: 1px solid hsl(220 15% 25%);
+        border-radius: 4px;
+        color: hsl(0 0% 80%);
+        font-family: inherit;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.15s;
+      }
+      #print-options-dialog .orient-btn:hover {
+        border-color: hsl(142 40% 45%);
+        color: hsl(142 40% 70%);
+        background: hsl(220 15% 18%);
+      }
+      #print-options-dialog .orient-btn .icon {
+        display: inline-block;
+        border: 1.5px solid currentColor;
+        border-radius: 2px;
+        margin-right: 10px;
+        vertical-align: middle;
+        position: relative;
+        top: -1px;
+      }
+      #print-options-dialog .orient-btn .icon.portrait {
+        width: 12px;
+        height: 16px;
+      }
+      #print-options-dialog .orient-btn .icon.landscape {
+        width: 16px;
+        height: 12px;
+      }
+      #print-options-dialog .cancel-btn {
+        display: block;
+        width: 100%;
+        padding: 8px;
+        margin-top: 8px;
+        background: transparent;
+        border: 1px solid hsl(220 15% 25%);
+        border-radius: 4px;
+        color: hsl(220 10% 50%);
+        font-family: inherit;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      #print-options-dialog .cancel-btn:hover {
+        border-color: hsl(0 60% 50%);
+        color: hsl(0 60% 65%);
+      }
+
       /* Temporarily visible so Recharts can measure & paint SVGs.
          Positioned offscreen so the user doesn't see a flash. */
       .print-ready.print-only {
@@ -38,14 +129,14 @@
         position: fixed !important;
         left: -9999px !important;
         top: 0 !important;
-        width: 7.5in !important;       /* letter minus margins */
+        width: 9.5in !important;        /* landscape width; portrait still fits */
         visibility: visible !important;
         z-index: -1 !important;
       }
 
       @media print {
-        /* --- Hide the React app root entirely during print --- */
-        #root {
+        /* --- Hide the React app root and dialog during print --- */
+        #root, #print-options-dialog {
           display: none !important;
         }
 
@@ -89,9 +180,8 @@
           overflow: visible !important;
         }
 
-        /* --- Page setup --- */
+        /* --- Page setup (orientation set dynamically by #print-page-size) --- */
         @page {
-          size: letter;
           margin: 0.6in 0.5in;
         }
 
@@ -215,22 +305,35 @@
 
     <!--
       Print pipeline:
-      1. Override window.print() so we control timing
-      2. Move #print-all-container to <body> (escapes flex → page breaks work)
-      3. Make it visible so Recharts SVGs can measure & paint
-      4. Wait 800ms for charts to render
-      5. Call the real window.print()
-      6. On afterprint, hide it and move it back into React tree
+      1. Override window.print() → show orientation dialog
+      2. User picks portrait/landscape → inject @page size rule
+      3. Move #print-all-container to <body> (escapes flex → page breaks work)
+      4. Make it visible so Recharts SVGs can measure & paint
+      5. Wait 800ms for charts to render
+      6. Call the real window.print()
+      7. On afterprint, hide it and move it back into React tree
     -->
     <script>
       (function () {
         var realPrint = window.print.bind(window);
         var container, reactParent, printing = false;
 
+        /* Dynamic @page size rule */
+        var pageSizeStyle = document.createElement("style");
+        pageSizeStyle.id = "print-page-size";
+        pageSizeStyle.textContent = "@page { size: letter; }";
+        document.head.appendChild(pageSizeStyle);
+
+        function setOrientation(orient) {
+          pageSizeStyle.textContent = orient === "landscape"
+            ? "@page { size: letter landscape; }"
+            : "@page { size: letter; }";
+        }
+
         /* Restore DOM after print dialog closes */
         window.addEventListener("afterprint", function () {
           if (container && reactParent) {
-            container.style.display = "";          /* re-hide via .print-only */
+            container.style.display = "";
             container.classList.remove("print-ready");
             reactParent.appendChild(container);
             container = null;
@@ -239,33 +342,65 @@
           printing = false;
         });
 
-        window.print = function () {
-          if (printing) return;
-          printing = true;
-
+        /* The actual print sequence after orientation is chosen */
+        function executePrint() {
           container = document.getElementById("print-all-container");
           if (!container) { realPrint(); return; }
 
           reactParent = container.parentNode;
-
-          /* Step 1: move out of flex tree onto <body> */
           document.body.appendChild(container);
-
-          /* Step 2: force visible so charts can render their SVGs */
           container.style.display = "block";
           container.classList.add("print-ready");
 
-          /* Step 3: give Recharts time to measure & paint, then print */
           setTimeout(function () {
-            /* Hide on-screen (we only want it in the print stream) */
             container.style.display = "";
             realPrint();
           }, 800);
+        }
+
+        /* Override window.print to show orientation picker */
+        window.print = function () {
+          if (printing) return;
+          printing = true;
+
+          var dialog = document.getElementById("print-options-dialog");
+          if (dialog) {
+            dialog.classList.add("open");
+          } else {
+            /* Fallback if dialog HTML hasn't loaded yet */
+            executePrint();
+          }
+        };
+
+        /* Expose helpers for the dialog buttons */
+        window.__printWithOrientation = function (orient) {
+          var dialog = document.getElementById("print-options-dialog");
+          if (dialog) dialog.classList.remove("open");
+          setOrientation(orient);
+          executePrint();
+        };
+        window.__cancelPrint = function () {
+          var dialog = document.getElementById("print-options-dialog");
+          if (dialog) dialog.classList.remove("open");
+          printing = false;
         };
       })();
     </script>
   </head>
   <body>
+    <!-- Print orientation picker dialog -->
+    <div id="print-options-dialog">
+      <div class="dialog-box">
+        <h3>Print Orientation</h3>
+        <button class="orient-btn" onclick="window.__printWithOrientation('portrait')">
+          <span class="icon portrait"></span> PORTRAIT
+        </button>
+        <button class="orient-btn" onclick="window.__printWithOrientation('landscape')">
+          <span class="icon landscape"></span> LANDSCAPE
+        </button>
+        <button class="cancel-btn" onclick="window.__cancelPrint()">CANCEL</button>
+      </div>
+    </div>
     <div id="root"></div>
   </body>
 </html>
