@@ -26,5 +26,164 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (() => {
+        const BUTTON_ID = 'print-all-tabs-button';
+
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const copyComputedStyles = (fromDoc, toDoc) => {
+          const inlineStyleNodes = [...fromDoc.querySelectorAll('style')].map((styleNode) => {
+            const style = toDoc.createElement('style');
+            style.textContent = styleNode.textContent;
+            return style;
+          });
+
+          const linkedStylesheets = [...fromDoc.querySelectorAll('link[rel="stylesheet"]')].map((linkNode) => {
+            const link = toDoc.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = linkNode.href;
+            return link;
+          });
+
+          [...linkedStylesheets, ...inlineStyleNodes].forEach((node) => toDoc.head.appendChild(node));
+        };
+
+        const findPanelsForTab = (tab) => {
+          const controlledPanelId = tab.getAttribute('aria-controls');
+
+          if (controlledPanelId) {
+            const panel = document.getElementById(controlledPanelId);
+            return panel ? [panel] : [];
+          }
+
+          const tablist = tab.closest('[role="tablist"]');
+          const allTabs = tablist ? [...tablist.querySelectorAll('[role="tab"], [aria-controls]')] : [];
+          const tabIndex = allTabs.indexOf(tab);
+
+          if (!tablist || tabIndex < 0) {
+            return [];
+          }
+
+          const container = tablist.parentElement;
+          const candidatePanels = container
+            ? [...container.querySelectorAll('[role="tabpanel"], .tab-panel, [data-tab-panel]')]
+            : [];
+
+          return candidatePanels[tabIndex] ? [candidatePanels[tabIndex]] : [];
+        };
+
+        const getPrintableTabs = () => {
+          const tabCandidates = [...document.querySelectorAll('[role="tab"], [aria-controls]')];
+
+          return tabCandidates
+            .map((tab) => {
+              const label = (tab.textContent || '').trim() || 'Untitled Section';
+              const panels = findPanelsForTab(tab);
+              return { tab, label, panels };
+            })
+            .filter(({ panels }) => panels.length > 0);
+        };
+
+        const createPrintButton = () => {
+          if (document.getElementById(BUTTON_ID)) {
+            return;
+          }
+
+          const button = document.createElement('button');
+          button.id = BUTTON_ID;
+          button.type = 'button';
+          button.textContent = 'Print All Tabs';
+          button.style.position = 'fixed';
+          button.style.right = '16px';
+          button.style.bottom = '16px';
+          button.style.zIndex = '9999';
+          button.style.padding = '10px 14px';
+          button.style.borderRadius = '8px';
+          button.style.border = '1px solid rgba(0,0,0,0.2)';
+          button.style.background = '#111';
+          button.style.color = '#fff';
+          button.style.fontSize = '14px';
+          button.style.fontWeight = '600';
+          button.style.cursor = 'pointer';
+          button.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+          button.setAttribute('aria-label', 'Print all tabs');
+
+          button.addEventListener('click', async () => {
+            const printableTabs = getPrintableTabs();
+
+            if (!printableTabs.length) {
+              alert('No tab content found to print.');
+              return;
+            }
+
+            const activeTab =
+              printableTabs.find(({ tab }) => tab.getAttribute('aria-selected') === 'true')?.tab ||
+              document.querySelector('[role="tab"][aria-selected="true"]');
+
+            const sections = [];
+
+            for (const { tab, label, panels } of printableTabs) {
+              tab.click();
+              await sleep(80);
+
+              const panelMarkup = panels
+                .map((panel) => {
+                  const clone = panel.cloneNode(true);
+                  return `<div class=\"print-panel\">${clone.innerHTML}</div>`;
+                })
+                .join('');
+
+              sections.push(`<section class=\"print-section\"><h2>${label}</h2>${panelMarkup}</section>`);
+            }
+
+            if (activeTab) {
+              activeTab.click();
+            }
+
+            const printWindow = window.open('', '_blank', 'width=1200,height=900');
+
+            if (!printWindow) {
+              alert('Unable to open print window. Please allow pop-ups for this site.');
+              return;
+            }
+
+            printWindow.document.open();
+            printWindow.document.write(`<!doctype html><html><head><meta charset=\"utf-8\"><title>Print All Tabs</title></head><body><main>${sections.join('')}</main></body></html>`);
+            printWindow.document.close();
+
+            copyComputedStyles(document, printWindow.document);
+
+            const printStyles = printWindow.document.createElement('style');
+            printStyles.textContent = `
+              body { margin: 24px; color: #111; font-family: Inter, Arial, sans-serif; }
+              h2 { margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #ddd; font-size: 1.05rem; }
+              .print-section { margin: 0 0 28px; break-inside: avoid; }
+              .print-panel { margin-bottom: 14px; }
+              @media print {
+                .print-section { page-break-inside: avoid; }
+              }
+            `;
+            printWindow.document.head.appendChild(printStyles);
+
+            setTimeout(() => {
+              printWindow.focus();
+              printWindow.print();
+            }, 250);
+          });
+
+          document.body.appendChild(button);
+        };
+
+        const observer = new MutationObserver(() => {
+          if (document.querySelector('[role="tab"], [aria-controls]')) {
+            createPrintButton();
+          }
+        });
+
+        observer.observe(document.body, { subtree: true, childList: true });
+        createPrintButton();
+      })();
+    </script>
   </body>
 </html>
