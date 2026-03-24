@@ -38660,9 +38660,7 @@ function VP() {
       );
     }, []));
   const a = () => {
-      const c = `${window.location.origin}${window.location.pathname}#/print-all`,
-        f = window.open(c, "_blank");
-      f && f.focus();
+      window.print();
     },
     u = () => {
       switch (e) {
@@ -38730,10 +38728,65 @@ function VP() {
         ],
       }),
       j.jsxs("div", {
-        className: "flex-1 overflow-y-auto overscroll-contain p-4",
+        className: "flex-1 overflow-y-auto overscroll-contain p-4 screen-only",
         children: [
           u(),
           j.jsx("div", { className: "mt-6 pb-4", children: j.jsx(uW, {}) }),
+        ],
+      }),
+      j.jsxs("div", {
+        id: "print-all-container",
+        className: "print-only",
+        children: [
+          j.jsx("div", {
+            className: "print-header mb-6",
+            children: j.jsx("h1", {
+              className: "text-[hsl(var(--term-green))] text-lg tracking-wider",
+              children: "PERPLEXITY MACRO TERMINAL — FULL REPORT",
+            }),
+          }),
+          j.jsxs("section", {
+            className: "mb-8 print-section",
+            children: [
+              j.jsx("h2", { className: "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label", children: "1 — OVERVIEW" }),
+              j.jsx(KP, {}),
+            ],
+          }),
+          j.jsxs("section", {
+            className: "mb-8 print-section",
+            children: [
+              j.jsx("h2", { className: "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label", children: "2 — RATES" }),
+              j.jsx(XU, {}),
+            ],
+          }),
+          j.jsxs("section", {
+            className: "mb-8 print-section",
+            children: [
+              j.jsx("h2", { className: "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label", children: "3 — INFLATION" }),
+              j.jsx(JU, {}),
+            ],
+          }),
+          j.jsxs("section", {
+            className: "mb-8 print-section",
+            children: [
+              j.jsx("h2", { className: "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label", children: "4 — GROWTH" }),
+              j.jsx(eW, {}),
+            ],
+          }),
+          j.jsxs("section", {
+            className: "mb-8 print-section",
+            children: [
+              j.jsx("h2", { className: "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label", children: "5 — LABOR" }),
+              j.jsx(nW, {}),
+            ],
+          }),
+          j.jsxs("section", {
+            className: "mb-8 print-section",
+            children: [
+              j.jsx("h2", { className: "text-[hsl(var(--term-green))] text-xs tracking-[0.2em] mb-3 section-label", children: "6 — RISK" }),
+              j.jsx(oW, {}),
+            ],
+          }),
         ],
       }),
     ],
