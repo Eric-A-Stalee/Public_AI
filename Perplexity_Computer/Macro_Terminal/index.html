@@ -23,6 +23,177 @@
     <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fira+Code:wght@300..700&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Outfit:wght@100..900&family=Oxanium:wght@200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <script type="module" crossorigin src="./assets/index-BswlGUjW.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-qmlA54SX.css">
+    <style id="bulk-print-styles">
+      /* ===== Bulk Print Styles — Perplexity Macro Terminal ===== */
+
+      /* Hide no-print elements on screen too (they only show in print-all view) */
+      .no-print { display: flex; }
+
+      @media print {
+        /* --- Override terminal dark theme to printer-friendly palette --- */
+        :root {
+          --term-green: 142 30% 20% !important;
+          --term-red: 0 72% 40% !important;
+          --term-amber: 45 80% 35% !important;
+          --term-cyan: 185 60% 30% !important;
+          --term-dim: 220 10% 35% !important;
+          --term-bg: 0 0% 100% !important;
+          --term-surface: 0 0% 97% !important;
+          --term-border: 220 10% 75% !important;
+          --background: 0 0% 100% !important;
+          --foreground: 220 15% 15% !important;
+          --card: 0 0% 97% !important;
+          --card-foreground: 220 15% 15% !important;
+          --primary: 142 40% 30% !important;
+          --primary-foreground: 0 0% 100% !important;
+          --secondary: 220 10% 92% !important;
+          --secondary-foreground: 220 15% 15% !important;
+          --muted: 220 10% 92% !important;
+          --muted-foreground: 220 10% 40% !important;
+          --border: 220 10% 80% !important;
+        }
+
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        html, body, #root {
+          background: #fff !important;
+          color: #1a1a2e !important;
+        }
+
+        /* --- Hide UI chrome: buttons, status text, scanlines --- */
+        .no-print {
+          display: none !important;
+        }
+        .scanline::before,
+        .scanline::after {
+          display: none !important;
+        }
+
+        /* --- Page setup --- */
+        @page {
+          size: letter;
+          margin: 0.6in 0.5in;
+        }
+
+        /* --- Section page breaks (each tab on its own page) --- */
+        section {
+          page-break-after: always !important;
+          break-after: page !important;
+        }
+        section:last-child {
+          page-break-after: avoid !important;
+          break-after: auto !important;
+        }
+
+        /* --- Prevent orphaned elements inside sections --- */
+        section * {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+
+        /* --- Dark backgrounds → white for print --- */
+        [class*="bg-[hsl(220"] {
+          background-color: #fff !important;
+        }
+        [class*="bg-[hsl(var(--term-bg"])],
+        [class*="bg-[hsl(var(--term-surface"])],
+        .print-all-view {
+          background-color: #fff !important;
+        }
+
+        /* --- All text → dark for readability --- */
+        [class*="text-[hsl(var(--term-green"])],
+        [class*="text-[hsl(var(--term-dim"])],
+        [class*="text-[hsl(var(--term-cyan"])],
+        h1, h2, h3, h4, h5, h6, p, span, div, td, th, li {
+          color: #1a1a2e !important;
+        }
+
+        /* --- Keep red/amber semantic colors for risk indicators --- */
+        [class*="text-[hsl(var(--term-red"])] {
+          color: #c0392b !important;
+        }
+        [class*="text-[hsl(var(--term-amber"])] {
+          color: #b8860b !important;
+        }
+
+        /* --- Section headers: bold with underline --- */
+        .section-label {
+          color: #1a1a2e !important;
+          font-size: 14pt !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.15em !important;
+          border-bottom: 2px solid #1a1a2e !important;
+          padding-bottom: 4pt !important;
+          margin-bottom: 10pt !important;
+        }
+
+        /* --- Report title --- */
+        .print-header h1 {
+          color: #1a1a2e !important;
+          font-size: 16pt !important;
+          font-weight: 700 !important;
+          border-bottom: 3px double #1a1a2e !important;
+          padding-bottom: 6pt !important;
+          margin-bottom: 16pt !important;
+        }
+
+        /* --- Borders → visible on paper --- */
+        [class*="border-[hsl(var(--term-border"])],
+        [class*="border-[hsl(var(--term-green"])] {
+          border-color: #ccc !important;
+        }
+
+        /* --- Remove glow/shadow effects --- */
+        [class*="glow"],
+        [class*="shadow"] {
+          text-shadow: none !important;
+          box-shadow: none !important;
+          filter: none !important;
+        }
+
+        /* --- Charts: ensure SVGs print and don't split pages --- */
+        svg {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        .recharts-wrapper {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+
+        /* --- Tables & grids: avoid page splits --- */
+        table, [class*="grid"] {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+
+        /* --- Unlock overflow/height so content isn't clipped --- */
+        .overflow-y-auto,
+        .overflow-hidden,
+        .overflow-x-auto {
+          overflow: visible !important;
+        }
+        .h-screen, .min-h-screen {
+          height: auto !important;
+          min-height: auto !important;
+        }
+        .max-h-screen,
+        [class*="max-h-"] {
+          max-height: none !important;
+        }
+
+        /* --- Links: show URLs on paper --- */
+        a[href]:after {
+          content: " (" attr(href) ")";
+          font-size: 8pt;
+          color: #666;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
