@@ -23,46 +23,80 @@ LABEL_PAD_ID      = -100
 
 def tokenize_row_for_dpo(row, tokenizer):
     """
-    Pre-tokenizes a DPO row using a plain text tokenizer, producing the exact
-    field names that TRL's DPODataCollatorWithPadding expects.  This bypasses
-    DPOTrainer's internal tokenize_row, which would call the multimodal
-    tokenizer and inject image tokens.
+    Pre-tokenize a DPO row using a plain text tokenizer, producing the exact
+    field names TRL's DPODataCollatorWithPadding expects.  Bypasses
+    DPOTrainer.tokenize_row, which would call the multimodal tokenizer and
+    inject image tokens.
+
+    Tokenizes prompt+response jointly (not in isolation) so that BPE/SentencePiece
+    boundary merging matches what the model actually sees, and appends EOS to
+    each response so DPO trains the stopping signal.
     """
-    prompt_enc = tokenizer(
-        row['prompt'],
-        truncation=True,
-        max_length=MAX_PROMPT_LENGTH,
-        add_special_tokens=True,
-    )
-    prompt_ids  = prompt_enc['input_ids']
-    prompt_mask = prompt_enc['attention_mask']
-    prompt_len  = len(prompt_ids)
+    prompt_text = row['prompt']
+    bos_id = tokenizer.bos_token_id
+    eos_id = tokenizer.eos_token_id
 
-    response_budget = MAX_LENGTH - prompt_len
+    prompt_only_ids = tokenizer(prompt_text, add_special_tokens=False)['input_ids']
 
-    chosen_enc = tokenizer(
-        row['chosen'],
-        truncation=True,
-        max_length=response_budget,
-        add_special_tokens=False,
-    )
-    rejected_enc = tokenizer(
-        row['rejected'],
-        truncation=True,
-        max_length=response_budget,
-        add_special_tokens=False,
-    )
+    def split_joint(response_text):
+        joint = tokenizer(prompt_text + response_text, add_special_tokens=False)
+        boundary = len(prompt_only_ids)
+        # If BPE merged a token across the prompt/response seam, back off by one
+        if joint['input_ids'][:boundary] != prompt_only_ids:
+            boundary -= 1
+        return (
+            joint['input_ids'][:boundary],
+            joint['attention_mask'][:boundary],
+            joint['input_ids'][boundary:],
+            joint['attention_mask'][boundary:],
+        )
 
-    chosen_ids    = (prompt_ids  + chosen_enc['input_ids'])[:MAX_LENGTH]
-    chosen_mask   = (prompt_mask + chosen_enc['attention_mask'])[:MAX_LENGTH]
-    rejected_ids  = (prompt_ids  + rejected_enc['input_ids'])[:MAX_LENGTH]
-    rejected_mask = (prompt_mask + rejected_enc['attention_mask'])[:MAX_LENGTH]
+    c_prompt_ids, c_prompt_mask, c_resp_ids, c_resp_mask = split_joint(row['chosen'])
+    r_prompt_ids, _,            r_resp_ids, r_resp_mask = split_joint(row['rejected'])
+
+    # If chosen and rejected resolve different prompt lengths at the seam (rare,
+    # but possible when their first character merges differently), take the min
+    # as canonical — same approach TRL's _build_tokenized_answer uses.
+    canonical_len = min(len(c_prompt_ids), len(r_prompt_ids))
+    prompt_ids  = c_prompt_ids[:canonical_len]
+    prompt_mask = c_prompt_mask[:canonical_len]
+
+    # Prepend BOS if the tokenizer has one and it's missing
+    if bos_id is not None and (not prompt_ids or prompt_ids[0] != bos_id):
+        prompt_ids  = [bos_id] + prompt_ids
+        prompt_mask = [1]      + prompt_mask
+
+    # Left-truncate the prompt to keep the most recent context if over budget
+    if len(prompt_ids) > MAX_PROMPT_LENGTH:
+        prompt_ids  = prompt_ids[-MAX_PROMPT_LENGTH:]
+        prompt_mask = prompt_mask[-MAX_PROMPT_LENGTH:]
+
+    prompt_len      = len(prompt_ids)
+    eos_budget      = 1 if eos_id is not None else 0
+    response_budget = max(0, MAX_LENGTH - prompt_len - eos_budget)
+
+    c_resp_ids  = c_resp_ids[:response_budget]
+    c_resp_mask = c_resp_mask[:response_budget]
+    r_resp_ids  = r_resp_ids[:response_budget]
+    r_resp_mask = r_resp_mask[:response_budget]
+
+    # Append EOS so DPO learns the probability of stopping
+    if eos_id is not None:
+        if not c_resp_ids or c_resp_ids[-1] != eos_id:
+            c_resp_ids  = c_resp_ids  + [eos_id]
+            c_resp_mask = c_resp_mask + [1]
+        if not r_resp_ids or r_resp_ids[-1] != eos_id:
+            r_resp_ids  = r_resp_ids  + [eos_id]
+            r_resp_mask = r_resp_mask + [1]
+
+    chosen_ids    = prompt_ids  + c_resp_ids
+    chosen_mask   = prompt_mask + c_resp_mask
+    rejected_ids  = prompt_ids  + r_resp_ids
+    rejected_mask = prompt_mask + r_resp_mask
 
     # Mask the prompt portion in labels so loss is only on the response
-    chosen_labels   = [LABEL_PAD_ID] * prompt_len + chosen_enc['input_ids']
-    chosen_labels   = chosen_labels[:MAX_LENGTH]
-    rejected_labels = [LABEL_PAD_ID] * prompt_len + rejected_enc['input_ids']
-    rejected_labels = rejected_labels[:MAX_LENGTH]
+    chosen_labels   = [LABEL_PAD_ID] * prompt_len + c_resp_ids
+    rejected_labels = [LABEL_PAD_ID] * prompt_len + r_resp_ids
 
     return {
         'prompt_input_ids':        prompt_ids,
