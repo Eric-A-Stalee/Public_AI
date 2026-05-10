@@ -182,7 +182,10 @@ model.config.pad_token_id = text_tokenizer.pad_token_id
 if hasattr(model.config, "vision_config"):
     model.config.vision_config = None
 if hasattr(model.config, 'image_token_id'):
-    model.config.image_token_id = -100
+    # Use a valid in-vocab token (pad token) instead of -100.  Negative IDs
+    # crash ROCm's vectorized_gather_kernel when the model's forward pass
+    # uses image_token_id in any gather / index_select / masked lookup.
+    model.config.image_token_id = text_tokenizer.pad_token_id
 if hasattr(model.config, 'mm_projector_type'):
     del model.config.mm_projector_type
 if hasattr(model.config, 'image_processor_type'):
