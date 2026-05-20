@@ -1484,7 +1484,7 @@ When asked to match:
 - You MUST call the submit_career_matches tool. Output NO prose before or after — the UI renders the structured tool output.
 - Be specific. "Software engineer" is too broad. Say "AI/ML engineer at an Indian product company" or "Embedded systems engineer in EV/automotive" or "Quant developer at a prop trading shop in Mumbai" or "UX researcher at a fintech".
 - Tailor degree paths and entrance exams to the SPECIFIC career, with realistic Indian institutes ranked by access tier.
-- For stretch_recommendations: give 2–3 careers the student probably wouldn't pick themselves — explicitly counter their defaults (e.g. engineering bias, family pressure field). Defend the choice with profile evidence.`;
+- stretch_recommendations is REQUIRED and MUST contain 2 or 3 entries — never fewer. These are careers the student probably wouldn't pick themselves — explicitly counter their defaults (e.g. engineering bias, family pressure field, what their friends are doing). Even if their profile points strongly to a particular direction, find 2–3 paths that fit but they likely haven't considered. This is the most valuable part of the output — do not skip it or return fewer than 2.`;
 
 const TOOL_SCHEMA = {
   name: 'submit_career_matches',
@@ -1638,7 +1638,7 @@ async function renderResults(params) {
 ${JSON.stringify(profile, null, 2)}
 \`\`\`
 
-Submit your career matches via the tool. Remember: be specific, push back on engineering-by-default if the profile suggests otherwise, and include 2–3 stretch recommendations.`;
+Submit your career matches via the tool. Be specific. Push back on engineering-by-default if the profile suggests otherwise. The stretch_recommendations field is REQUIRED — include exactly 2–3 entries of careers they probably wouldn't pick themselves but that fit the profile. Do not return fewer than 2 stretch picks under any circumstances.`;
 
       document.getElementById('gen-status').textContent = '→ waiting for response...';
 
@@ -1769,12 +1769,16 @@ Submit your career matches via the tool. Remember: be specific, push back on eng
     `).join('')}
 
     <h2 style="margin-top:32px;">Stretch picks <span class="dim mono" style="font-weight:400; font-size:13px;">// paths you probably wouldn't pick yourself</span></h2>
-    ${(r.stretch_recommendations || []).map(s => `
+    ${(r.stretch_recommendations && r.stretch_recommendations.length > 0) ? r.stretch_recommendations.map(s => `
       <div class="stretch-card">
         <div class="title">${escapeHTML(s.title)}</div>
         <div class="muted" style="margin-top:6px; font-size:14px;">${escapeHTML(s.why)}</div>
       </div>
-    `).join('')}
+    `).join('') : `
+      <div class="stretch-card" style="text-align:center;">
+        <div class="muted">The model didn't return stretch picks this time — sometimes happens. <a href="javascript:generateMatches()">Regenerate</a> to try again, or expand the raw JSON below to confirm.</div>
+      </div>
+    `}
 
     <div class="card" style="margin-top:24px;">
       <h3>Caveats</h3>
