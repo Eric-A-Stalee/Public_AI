@@ -1,0 +1,1912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>career.compass — figure out what to actually do</title>
+<style>
+:root {
+  --bg: #07080b;
+  --bg-1: #0d0f14;
+  --bg-2: #141821;
+  --bg-3: #1c2230;
+  --border: #262d3c;
+  --border-2: #353e52;
+  --text: #e7eaf0;
+  --text-2: #aab2c2;
+  --text-3: #6a7385;
+  --accent: #6ee7ff;
+  --accent-2: #ff8a3d;
+  --good: #6ee7a8;
+  --warn: #ffd76e;
+  --bad: #ff7a7a;
+  --shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 8px 30px rgba(0,0,0,0.5);
+  --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(1200px 800px at 80% -10%, #11233055, transparent 60%),
+              radial-gradient(900px 700px at -10% 110%, #25101a55, transparent 60%),
+              var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, kbd, .mono { font-family: var(--mono); }
+
+header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,8,11,0.7);
+  backdrop-filter: blur(8px);
+  position: sticky; top: 0; z-index: 50;
+}
+header .brand {
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: 15px;
+  color: var(--text);
+}
+header .brand .dot { color: var(--accent); }
+header .brand .sub { color: var(--text-3); font-weight: 400; margin-left: 8px; }
+header nav { display: flex; gap: 4px; margin-left: auto; align-items: center; }
+header nav button {
+  background: transparent; border: 1px solid transparent; color: var(--text-2);
+  padding: 6px 12px; border-radius: 8px; font-family: var(--mono); font-size: 13px;
+  cursor: pointer; transition: all .12s ease;
+}
+header nav button:hover { color: var(--text); background: var(--bg-2); }
+header nav button.active { color: var(--accent); border-color: var(--border-2); background: var(--bg-2); }
+header .progress {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 12px; color: var(--text-3);
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-1);
+}
+header .progress .bar { width: 80px; height: 4px; background: var(--bg-3); border-radius: 999px; overflow: hidden; }
+header .progress .bar > div { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0%; transition: width .3s ease; }
+
+main { max-width: 920px; margin: 0 auto; padding: 32px 24px 120px; }
+h1, h2, h3 { letter-spacing: -0.02em; margin: 0 0 12px; }
+h1 { font-size: 32px; font-weight: 700; }
+h2 { font-size: 22px; font-weight: 600; }
+h3 { font-size: 16px; font-weight: 600; }
+.muted { color: var(--text-2); }
+.dim { color: var(--text-3); }
+.kbd { font-family: var(--mono); font-size: 12px; background: var(--bg-3); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); }
+
+.card {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.card.hover:hover { border-color: var(--border-2); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 16px; border-radius: 10px; font-family: var(--mono); font-size: 13px;
+  cursor: pointer; transition: all .12s ease;
+}
+.btn:hover { border-color: var(--border-2); background: var(--bg-3); }
+.btn.primary { background: linear-gradient(135deg, #1b3d4a, #1a2330); border-color: #2c5b6e; color: var(--accent); }
+.btn.primary:hover { border-color: var(--accent); }
+.btn.warm { background: linear-gradient(135deg, #3a2418, #261810); border-color: #5c3a23; color: var(--accent-2); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--bad); border-color: #3a2026; background: #1c1014; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+input[type=text], input[type=password], input[type=number], textarea, select {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+label { display: block; font-family: var(--mono); font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+
+/* HOME */
+.hero { display: grid; grid-template-columns: 1fr; gap: 24px; }
+.hero .tagline { font-size: 13px; color: var(--text-3); font-family: var(--mono); margin-bottom: 8px; }
+.hero h1 { font-size: 40px; line-height: 1.1; }
+.hero h1 .accent { color: var(--accent); }
+.hero p.lede { font-size: 17px; color: var(--text-2); max-width: 640px; }
+.depth-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+@media (max-width: 760px) { .depth-grid { grid-template-columns: 1fr; } }
+.depth-card { padding: 20px; cursor: pointer; transition: all .15s ease; }
+.depth-card:hover { transform: translateY(-2px); border-color: var(--border-2); }
+.depth-card .tag { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.05em; }
+.depth-card h3 { margin: 6px 0 6px; }
+.depth-card .meta { font-family: var(--mono); font-size: 12px; color: var(--text-3); margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+
+/* QUIZ */
+.qhead {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--mono); font-size: 12px; color: var(--text-3); margin-bottom: 24px;
+}
+.qhead .right { display: flex; gap: 8px; align-items: center; }
+.qcard {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px;
+  box-shadow: var(--shadow);
+  min-height: 360px;
+}
+.qcategory { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.08em; margin-bottom: 12px; }
+.qtext { font-size: 22px; font-weight: 500; line-height: 1.35; margin-bottom: 28px; letter-spacing: -0.01em; }
+.qhint { color: var(--text-3); font-size: 13px; margin-top: -16px; margin-bottom: 24px; }
+.qactions { display: flex; justify-content: space-between; margin-top: 24px; align-items: center; gap: 8px; }
+.qactions .right { display: flex; gap: 8px; }
+
+/* Likert */
+.likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.likert button {
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-2);
+  padding: 16px 8px; border-radius: 10px; cursor: pointer; font-family: var(--mono); font-size: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: all .12s ease;
+}
+.likert button:hover { border-color: var(--border-2); color: var(--text); }
+.likert button.selected { background: linear-gradient(135deg,#163240,#0e1a22); border-color: var(--accent); color: var(--accent); }
+.likert button .dot { width: 12px; height: 12px; border-radius: 50%; background: currentColor; opacity: 0.4; }
+.likert button.selected .dot { opacity: 1; }
+
+/* Slider */
+.slider-row { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
+.slider-row .label { flex: 0 0 30%; font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.slider-row .label.right { text-align: right; }
+.slider-row input[type=range] {
+  flex: 1;
+  -webkit-appearance: none; appearance: none;
+  height: 6px; background: var(--bg-3); border-radius: 999px; outline: none;
+}
+.slider-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  cursor: pointer; border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--border-2);
+}
+.slider-row input[type=range]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  cursor: pointer; border: 2px solid var(--bg);
+}
+.slider-val { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 12px; text-align: center; }
+
+/* Binary cards */
+.binary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .binary { grid-template-columns: 1fr; } }
+.binary .opt {
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; cursor: pointer; transition: all .15s ease;
+  display: flex; flex-direction: column; gap: 10px; min-height: 140px;
+}
+.binary .opt:hover { border-color: var(--border-2); transform: translateY(-2px); }
+.binary .opt.selected { background: linear-gradient(135deg,#163240,#0e1a22); border-color: var(--accent); }
+.binary .opt .tag { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.binary .opt .body { font-size: 15px; color: var(--text); line-height: 1.5; }
+
+/* Multi-select chips */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button {
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-2);
+  padding: 8px 14px; border-radius: 999px; cursor: pointer; font-family: var(--mono); font-size: 13px;
+  transition: all .12s ease;
+}
+.chips button:hover { border-color: var(--border-2); color: var(--text); }
+.chips button.selected { background: #163240; border-color: var(--accent); color: var(--accent); }
+
+/* Ranking */
+.rank-list { display: flex; flex-direction: column; gap: 8px; }
+.rank-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px;
+}
+.rank-item .num { font-family: var(--mono); color: var(--accent); width: 24px; }
+.rank-item .body { flex: 1; }
+.rank-item .ctrls button {
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--text-2);
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-family: var(--mono);
+}
+.rank-item .ctrls button:hover { color: var(--text); border-color: var(--border-2); }
+.rank-item .ctrls { display: flex; gap: 4px; }
+
+/* Single-select cards */
+.single-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (max-width: 700px) { .single-cards { grid-template-columns: 1fr; } }
+.single-cards .opt {
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; cursor: pointer; transition: all .12s ease;
+  display: flex; align-items: center; gap: 12px;
+}
+.single-cards .opt:hover { border-color: var(--border-2); }
+.single-cards .opt.selected { background: #163240; border-color: var(--accent); color: var(--accent); }
+.single-cards .opt .radio { width: 16px; height: 16px; border: 2px solid currentColor; border-radius: 50%; opacity: 0.5; flex-shrink: 0; }
+.single-cards .opt.selected .radio { background: var(--accent); opacity: 1; box-shadow: inset 0 0 0 3px var(--bg-1); }
+
+/* Numeric */
+.numeric { display: flex; gap: 12px; align-items: center; }
+.numeric input { width: 200px; font-size: 22px; padding: 14px; text-align: center; }
+.numeric .suffix { font-family: var(--mono); color: var(--text-3); }
+
+/* Work sample energy meter */
+.energy {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+.energy button {
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-2);
+  padding: 16px 8px; border-radius: 10px; cursor: pointer; font-family: var(--mono); font-size: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all .12s ease;
+}
+.energy button:hover { border-color: var(--border-2); color: var(--text); }
+.energy button.selected { border-color: var(--accent); }
+.energy button .emo { font-size: 24px; }
+.energy button.selected.lvl-0 { background: #2a1418; color: #ff9a9a; border-color: #ff7a7a; }
+.energy button.selected.lvl-1 { background: #281c14; color: #ffb37a; border-color: #ff9d5a; }
+.energy button.selected.lvl-2 { background: #1e2024; color: #d0d3da; border-color: #555; }
+.energy button.selected.lvl-3 { background: #14241c; color: #9aff9a; border-color: #6ee7a8; }
+.energy button.selected.lvl-4 { background: #14282c; color: #6ee7ff; border-color: #6ee7ff; }
+
+/* Image preference grid */
+.imgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 700px) { .imgrid { grid-template-columns: repeat(2, 1fr); } }
+.imgrid .opt {
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 10px; cursor: pointer; transition: all .12s ease;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  position: relative;
+  text-align: center;
+}
+.imgrid .opt:hover { border-color: var(--border-2); transform: translateY(-2px); }
+.imgrid .opt.selected { background: #163240; border-color: var(--accent); }
+.imgrid .opt .emo { font-size: 36px; }
+.imgrid .opt .lbl { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+.imgrid .opt .badge {
+  position: absolute; top: 6px; right: 6px;
+  background: var(--accent); color: var(--bg); width: 20px; height: 20px;
+  border-radius: 50%; font-family: var(--mono); font-size: 11px; font-weight: 700;
+  display: none; align-items: center; justify-content: center;
+}
+.imgrid .opt.selected .badge { display: flex; }
+
+/* Results */
+.match {
+  background: var(--bg-1); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow);
+}
+.match .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.match h2 { font-size: 22px; margin: 0; }
+.match .conf { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+.match .conf .pct { color: var(--accent); font-size: 18px; }
+.match .why { color: var(--text-2); margin: 12px 0; }
+.match .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+@media (max-width: 700px) { .match .grid { grid-template-columns: 1fr; } }
+.match .panel { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.match .panel h4 { margin: 0 0 8px; font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.05em; text-transform: uppercase; }
+.match .panel ul { margin: 0; padding-left: 18px; }
+.match .panel li { margin-bottom: 4px; font-size: 13px; }
+.ai-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 12px; padding: 4px 10px; border-radius: 999px;
+  background: var(--bg-2); border: 1px solid var(--border);
+}
+.ai-pill .score { font-weight: 700; }
+.ai-pill.lvl-low { color: var(--bad); border-color: #5c2530; }
+.ai-pill.lvl-med { color: var(--warn); border-color: #5c4825; }
+.ai-pill.lvl-high { color: var(--good); border-color: #25553a; }
+.salary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.salary-row .cell { background: var(--bg-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; text-align: center; }
+.salary-row .cell .lbl { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+.salary-row .cell .val { font-family: var(--mono); color: var(--accent); font-size: 14px; margin-top: 2px; }
+
+/* Followup chat */
+.chat { display: flex; flex-direction: column; gap: 12px; }
+.bubble { padding: 12px 16px; border-radius: 12px; max-width: 80%; line-height: 1.55; }
+.bubble.user { align-self: flex-end; background: linear-gradient(135deg,#163240,#0e1a22); border: 1px solid var(--border-2); }
+.bubble.bot { align-self: flex-start; background: var(--bg-2); border: 1px solid var(--border); }
+.chatbox { display: flex; gap: 8px; margin-top: 16px; }
+.chatbox input { flex: 1; }
+
+/* Misc */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-2); border: 1px solid var(--border-2); color: var(--text);
+  padding: 10px 18px; border-radius: 999px; font-family: var(--mono); font-size: 13px;
+  z-index: 100; box-shadow: var(--shadow);
+  opacity: 0; transition: opacity .2s ease;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+.spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: spin .8s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.stretch-card { background: var(--bg-2); border: 1px dashed var(--border-2); border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+.stretch-card .title { color: var(--accent-2); font-weight: 600; }
+
+.overall {
+  background: linear-gradient(135deg, #112230, #0b1218);
+  border: 1px solid #1d3a4a;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 18px;
+}
+.overall .label { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.08em; }
+.overall .body { font-size: 17px; line-height: 1.55; margin-top: 8px; }
+
+details.code-fold { margin-top: 8px; }
+details.code-fold summary { cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+details.code-fold pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto; font-size: 12px; max-height: 320px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">career<span class="dot">.</span>compass<span class="sub">// for indian students figuring it out</span></div>
+  <div class="progress" id="prog-pill" style="display:none;">
+    <span id="prog-label">profile 0%</span>
+    <div class="bar"><div id="prog-bar"></div></div>
+  </div>
+  <nav>
+    <button data-route="home" id="nav-home">home</button>
+    <button data-route="profile" id="nav-profile">profile</button>
+    <button data-route="results" id="nav-results">results</button>
+    <button data-route="settings" id="nav-settings">settings</button>
+  </nav>
+</header>
+
+<main id="app"></main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================================================================
+   CAREER COMPASS · single-file static app
+   Fully LLM-driven (Anthropic API, BYO key). Persistent profile in localStorage.
+   Mix-and-match any of the three quiz depths; answers merge into one profile.
+   ====================================================================== */
+
+const STORAGE_KEY = 'cc.profile.v1';
+const SETTINGS_KEY = 'cc.settings.v1';
+const RESULTS_KEY = 'cc.results.v1';
+const CHAT_KEY = 'cc.chat.v1';
+
+const DEFAULT_SETTINGS = {
+  apiKey: '',
+  model: 'claude-opus-4-7'
+};
+
+const MODELS = [
+  { id: 'claude-opus-4-7', label: 'Opus 4.7 — best matching, slower & pricier' },
+  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 — balanced (default)' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 — fast & cheap, less nuanced' }
+];
+
+/* ======================================================================
+   QUESTION BANK — categorised, multiple form types, three depths
+   depth: which quiz mode includes this question
+     - "quick"        ≈ 18 questions
+     - "medium"       ≈ 40 questions (includes quick)
+     - "comprehensive"≈ 90+ questions (includes medium)
+   ====================================================================== */
+
+const QUESTIONS = [
+
+  /* ---------- META / context ---------- */
+  { id:'meta_stage', type:'single-select', depth:['quick','medium','comprehensive'], category:'context',
+    text:'Where are you in your education right now?',
+    options:['In Class 9 or 10','In Class 11 or 12','Gap year / prepping for entrance exams','Undergraduate','Postgraduate','Already working, reconsidering'] },
+
+  { id:'meta_stream', type:'single-select', depth:['quick','medium','comprehensive'], category:'context',
+    text:'If you\'re in 11/12 or have completed it, which stream?',
+    options:['Science — PCM','Science — PCB','Science — PCMB','Commerce','Arts / Humanities','Vocational','Not applicable / haven\'t chosen yet'] },
+
+  { id:'meta_city_type', type:'single-select', depth:['medium','comprehensive'], category:'context',
+    text:'What kind of place are you from?',
+    options:['Tier-1 metro (Mumbai/Delhi/Bangalore/Chennai/Hyderabad/Kolkata/Pune)','Tier-2 city (state capital, big district)','Tier-3 town','Village / rural'] },
+
+  { id:'meta_languages', type:'multi-select', depth:['medium','comprehensive'], category:'context',
+    text:'Languages you\'re genuinely comfortable working in (reading + writing + speaking):',
+    options:['English','Hindi','Tamil','Telugu','Kannada','Malayalam','Marathi','Gujarati','Bengali','Punjabi','Urdu','Odia','Assamese','Other'] },
+
+  /* ---------- RIASEC + modern interests (likert) ---------- */
+  { id:'int_realistic_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'I enjoy fixing or building physical things — bikes, electronics, furniture, anything I can hold.' },
+  { id:'int_realistic_2', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'Working outdoors or with my hands sounds more satisfying than sitting at a desk all day.' },
+
+  { id:'int_invest_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'I get curious about how systems work — biology, machines, economies, anything with hidden mechanisms.' },
+  { id:'int_invest_2', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'I\'d rather understand why something happens than just memorise that it does.' },
+
+  { id:'int_artistic_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'I lose track of time when making something visually or aesthetically pleasing.' },
+  { id:'int_artistic_2', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'I get genuinely upset when something is functional but ugly, or beautiful but broken.' },
+
+  { id:'int_social_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'Helping someone through a personal problem actually energises me rather than draining me.' },
+  { id:'int_social_2', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'I\'m the friend people come to when they need to talk through something difficult.' },
+
+  { id:'int_enterprise_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'I enjoy persuading others — convincing a group to try my idea is fun, not stressful.' },
+  { id:'int_enterprise_2', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'I\'ve sold or organised something on my own — a small business, an event, a campaign.' },
+
+  { id:'int_convention_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'I prefer clear instructions, well-defined tasks, and knowing exactly what "done" looks like.' },
+  { id:'int_convention_2', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'Spreadsheets and well-organised filing systems are genuinely satisfying to me.' },
+
+  { id:'int_tech_1', type:'likert', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'When a new tech or app comes out, I want to try it and figure out what\'s under the hood.' },
+  { id:'int_tech_2', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'I\'ve spent unpaid hours coding, modding, or building software/digital things just because.' },
+
+  { id:'int_pattern_1', type:'likert', depth:['medium','comprehensive'], category:'interests',
+    text:'I notice patterns in data, behaviour, or numbers that other people seem to miss.' },
+  { id:'int_novelty_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'I\'d rather chase a brand-new untested idea than refine a proven one.' },
+  { id:'int_writing_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'I think most clearly when I\'m writing things down, and I enjoy the act of crafting sentences.' },
+  { id:'int_perform_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'I\'m comfortable being looked at — presenting, performing, being on camera.' },
+  { id:'int_care_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'I could spend hours caring for animals, kids, plants, or sick people without resentment.' },
+  { id:'int_justice_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'Unfairness — even small, far away — bothers me enough that I want to act on it.' },
+  { id:'int_money_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'I find markets, money flows, and how value is created and captured genuinely interesting.' },
+  { id:'int_words_1', type:'likert', depth:['comprehensive'], category:'interests',
+    text:'I enjoy reading long articles, books, or papers and could happily do it for hours.' },
+
+  /* ---------- Subjects enjoyed (multi-select) ---------- */
+  { id:'subjects_enjoyed', type:'multi-select', depth:['quick','medium','comprehensive'], category:'interests',
+    text:'Which subjects have you genuinely enjoyed — not just scored well in?',
+    options:['Mathematics','Physics','Chemistry','Biology','Computer Science','English','Hindi/regional','History','Geography','Economics','Political Science','Psychology','Sociology','Accountancy','Business Studies','Art/Design','Music','Physical Education / Sports','Philosophy / Ethics','Environmental Studies'] },
+
+  { id:'unpaid_time', type:'multi-select', depth:['medium','comprehensive'], category:'interests',
+    text:'In the last 1–2 years, what have you spent unpaid time on for more than 10 hours total?',
+    options:['Coding / building software','Making videos / editing','Photography','Writing / blogging','Reading books outside syllabus','Drawing / digital art','Music — playing or producing','Gaming (competitive)','Sports / fitness','Volunteering / NGO work','Cooking / baking','Tinkering with electronics / DIY','Tutoring others','Running a small business / reselling','Debate / Model UN','Theatre / drama','Religious / spiritual practice','None of these'] },
+
+  /* ---------- Big-Five-ish ---------- */
+  { id:'bf_openness_1', type:'likert', depth:['medium','comprehensive'], category:'personality',
+    text:'I\'m drawn to abstract ideas and theoretical questions.' },
+  { id:'bf_openness_2', type:'likert', depth:['comprehensive'], category:'personality',
+    text:'I actively seek out experiences and ideas that are unfamiliar to me.' },
+  { id:'bf_conscient_1', type:'likert', depth:['medium','comprehensive'], category:'personality',
+    text:'I finish what I start, even when it stops being fun.' },
+  { id:'bf_conscient_2', type:'likert', depth:['comprehensive'], category:'personality',
+    text:'I notice small details others miss and want to fix them.' },
+  { id:'bf_extra_1', type:'likert', depth:['medium','comprehensive'], category:'personality',
+    text:'I get more energy from being around people than from being alone.' },
+  { id:'bf_extra_2', type:'likert', depth:['comprehensive'], category:'personality',
+    text:'I\'m comfortable striking up a conversation with strangers.' },
+  { id:'bf_agree_1', type:'likert', depth:['medium','comprehensive'], category:'personality',
+    text:'I find it easy to see another person\'s side, even in arguments I care about.' },
+  { id:'bf_neuro_1', type:'likert', depth:['comprehensive'], category:'personality',
+    text:'I handle pressure and deadlines without melting down — even when stakes are high.' },
+  { id:'bf_neuro_2', type:'likert', depth:['comprehensive'], category:'personality',
+    text:'I bounce back quickly when something goes wrong.' },
+
+  /* ---------- Self-rated aptitudes (sliders 0–10) ---------- */
+  { id:'apt_math', type:'slider', depth:['medium','comprehensive'], category:'aptitudes',
+    text:'How would you rate yourself in mathematics?', left:'I avoid it', right:'I\'m strong at it', min:0, max:10, suffix:'/10' },
+  { id:'apt_english_writing', type:'slider', depth:['medium','comprehensive'], category:'aptitudes',
+    text:'How strong is your English writing?', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_verbal', type:'slider', depth:['medium','comprehensive'], category:'aptitudes',
+    text:'Verbal / debating ability — speaking on your feet:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_visual', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Visual / spatial reasoning — imagining 3D objects, layouts, diagrams:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_pattern', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Pattern recognition — seeing structure in data, sequences, behaviour:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_memory', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Memory — facts, names, dates, formulas:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_handeye', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Hand-eye coordination / craftsmanship:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_empathy', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Reading what other people are feeling — accurately:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_persuasion', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Persuading people — getting them to actually do something:', left:'Weak', right:'Strong', min:0, max:10, suffix:'/10' },
+  { id:'apt_grit', type:'slider', depth:['comprehensive'], category:'aptitudes',
+    text:'Grit — sticking with hard, boring stuff over long periods:', left:'Low', right:'High', min:0, max:10, suffix:'/10' },
+
+  /* ---------- Work-style sliders ---------- */
+  { id:'ws_solo_team', type:'slider', depth:['quick','medium','comprehensive'], category:'work_style',
+    text:'Where do you do your best work?',
+    left:'Alone, deep focus', right:'In a team, lots of bouncing ideas', min:0, max:100, suffix:'' },
+  { id:'ws_structure_chaos', type:'slider', depth:['medium','comprehensive'], category:'work_style',
+    text:'What schedule pulls the best out of you?',
+    left:'9-to-5, predictable', right:'Flexible, chaotic, owned by me', min:0, max:100, suffix:'' },
+  { id:'ws_stable_risk', type:'slider', depth:['medium','comprehensive'], category:'work_style',
+    text:'Pay shape you\'d pick if outcomes were equal:',
+    left:'Stable salary, low ceiling', right:'Variable / equity, high ceiling', min:0, max:100, suffix:'' },
+  { id:'ws_home_anywhere', type:'slider', depth:['medium','comprehensive'], category:'work_style',
+    text:'How far would you move for the right opportunity?',
+    left:'Stay near home', right:'Anywhere on earth', min:0, max:100, suffix:'' },
+  { id:'ws_hands_strategy', type:'slider', depth:['comprehensive'], category:'work_style',
+    text:'10 years from now, which feels more like a win?',
+    left:'Master craftsperson, hands-on', right:'Senior leader, hands-off', min:0, max:100, suffix:'' },
+  { id:'ws_local_global', type:'slider', depth:['comprehensive'], category:'work_style',
+    text:'Which feels more meaningful?',
+    left:'Building for the next 1B Indians who just got online', right:'Building for a global premium audience', min:0, max:100, suffix:'' },
+  { id:'ws_pace', type:'slider', depth:['comprehensive'], category:'work_style',
+    text:'Pace you can sustain happily:',
+    left:'Slow, deliberate, long horizons', right:'Fast, high-tempo, ship daily', min:0, max:100, suffix:'' },
+  { id:'ws_outputs', type:'slider', depth:['comprehensive'], category:'work_style',
+    text:'What kind of output feels most satisfying?',
+    left:'One big thing that lasts', right:'Many small things that ship', min:0, max:100, suffix:'' },
+
+  /* ---------- Scenario / binary cards ---------- */
+  { id:'sc_friday', type:'binary', depth:['quick','medium','comprehensive'], category:'scenarios',
+    text:'It\'s Friday night and you\'re free. Which is more "you"?',
+    optionA:'Reading or watching something that teaches a new skill.',
+    optionB:'Hanging out with friends — recharging, not improving.' },
+
+  { id:'sc_disagree', type:'binary', depth:['medium','comprehensive'], category:'scenarios',
+    text:'Your team is split on a decision. Your move?',
+    optionA:'Gather more data, then present an analysis everyone can react to.',
+    optionB:'Make a confident call based on what you have, and move forward.' },
+
+  { id:'sc_city', type:'binary', depth:['medium','comprehensive'], category:'scenarios',
+    text:'Same salary, both offers in hand. Which do you take?',
+    optionA:'Tier-1 startup, ambiguous role, brutal pace, learn fast.',
+    optionB:'Tier-2 city PSU, clear ladder, calm pace, work-life balance.' },
+
+  { id:'sc_risk', type:'binary', depth:['comprehensive'], category:'scenarios',
+    text:'Your idea has a 30% chance of being huge and a 70% chance of failing publicly. Do you?',
+    optionA:'Go for it — failure is information, success is life-changing.',
+    optionB:'Refine it more first, or pick a safer adjacent bet.' },
+
+  { id:'sc_problem', type:'binary', depth:['comprehensive'], category:'scenarios',
+    text:'Which problem would you rather spend a year solving?',
+    optionA:'Making something 100× faster for power users who already love it.',
+    optionB:'Making something usable for people who currently can\'t access it at all.' },
+
+  { id:'sc_audience', type:'binary', depth:['comprehensive'], category:'scenarios',
+    text:'Which feedback would land harder?',
+    optionA:'A senior expert says your work is technically impressive.',
+    optionB:'A regular user says your work changed their life.' },
+
+  { id:'sc_status', type:'binary', depth:['comprehensive'], category:'scenarios',
+    text:'Be honest:',
+    optionA:'I want a career where I\'m respected by people I respect.',
+    optionB:'I want a career where I\'m respected by the broader public / family / society.' },
+
+  { id:'sc_known', type:'binary', depth:['comprehensive'], category:'scenarios',
+    text:'Be more honest:',
+    optionA:'I\'d rather be the best at something narrow than okay at many things.',
+    optionB:'I\'d rather be a generalist with range than the best at one thing.' },
+
+  /* ---------- Values ranking ---------- */
+  { id:'val_ranking', type:'ranking', depth:['medium','comprehensive'], category:'values',
+    text:'Drag in order of how much each one matters to you (top = most):',
+    items:['Money','Impact on others','Autonomy / freedom','Prestige / social status','Job security','Creativity','Constant learning','Time with family'] },
+
+  { id:'val_ranking_2', type:'ranking', depth:['comprehensive'], category:'values',
+    text:'And these — which matter more, top-down:',
+    items:['Helping individuals one-on-one','Helping millions through scale','Beauty / aesthetics','Truth / knowledge','Power / influence','Safety / stability','Adventure / novelty','Loyalty to people I love'] },
+
+  /* ---------- Work-sample energy meters ---------- */
+  // imagine spending 4 focused hours on the task. how do you feel?
+  { id:'ws_algo', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours debugging a tricky algorithm bug. No one else can help.' },
+  { id:'ws_interview', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours interviewing 8 farmers about their daily problems.' },
+  { id:'ws_video', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours editing a video to feel exactly right.' },
+  { id:'ws_pitch', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours preparing a pitch deck and presenting it to senior people.' },
+  { id:'ws_surgery', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours observing surgery — blood, focus, life-and-death stakes.' },
+  { id:'ws_court', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours in court arguing a complex case in front of a judge.' },
+  { id:'ws_lab', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours running and re-running the same chemistry experiment for tiny variations.' },
+  { id:'ws_teach', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours teaching 30 students who don\'t fully follow yet.' },
+  { id:'ws_design', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours redesigning a UI/poster/logo until it actually works.' },
+  { id:'ws_write', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours writing a long essay or report that explains something hard.' },
+  { id:'ws_excel', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours in Excel modelling a company\'s financials.' },
+  { id:'ws_field', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours on a construction site in the sun, coordinating workers.' },
+  { id:'ws_data', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours analysing a messy dataset to find what it\'s hiding.' },
+  { id:'ws_negotiate', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours negotiating with a hostile counterparty over a contract.' },
+  { id:'ws_animal', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours working with animals — examining, calming, treating them.' },
+  { id:'ws_codebase', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours reading and refactoring a messy codebase someone else wrote.' },
+  { id:'ws_care', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours providing emotional support to someone going through grief.' },
+  { id:'ws_strategy', type:'work-sample', depth:['comprehensive'], category:'work_samples',
+    text:'4 hours in a meeting deciding company strategy with five senior people.' },
+
+  /* ---------- Image / workspace preference ---------- */
+  { id:'visual_workspace', type:'image-pref', depth:['quick','medium','comprehensive'], category:'visuals',
+    text:'Pick 3 environments that pull you in just looking at them:',
+    pickCount:3,
+    options:[
+      {emoji:'🏥', label:'Hospital / clinic'},
+      {emoji:'💻', label:'Office, lots of screens'},
+      {emoji:'🏗️', label:'Construction / field site'},
+      {emoji:'🎨', label:'Art / design studio'},
+      {emoji:'🎙️', label:'Recording / film set'},
+      {emoji:'⚖️', label:'Court / legal office'},
+      {emoji:'🚜', label:'Farm / rural field'},
+      {emoji:'🏫', label:'Classroom / campus'},
+      {emoji:'🎭', label:'Stage / theatre'},
+      {emoji:'🔬', label:'Research lab'},
+      {emoji:'🏦', label:'Bank / trading floor'},
+      {emoji:'🛠️', label:'Workshop / factory'},
+      {emoji:'🌐', label:'Remote / anywhere'},
+      {emoji:'🛡️', label:'Military / police / defence'},
+      {emoji:'🚀', label:'Startup garage'},
+      {emoji:'🏛️', label:'Government office'},
+      {emoji:'🏞️', label:'Outdoors / wildlife'},
+      {emoji:'🧑‍🍳', label:'Kitchen / restaurant'},
+      {emoji:'✈️', label:'Cockpit / aircraft'},
+      {emoji:'🏪', label:'Shop / retail floor'}
+    ] },
+
+  { id:'visual_objects', type:'image-pref', depth:['comprehensive'], category:'visuals',
+    text:'And pick 3 objects you\'d genuinely want to spend the day with:',
+    pickCount:3,
+    options:[
+      {emoji:'📐', label:'Blueprints'},
+      {emoji:'🧪', label:'Test tubes'},
+      {emoji:'🎹', label:'Musical instrument'},
+      {emoji:'📚', label:'Pile of books'},
+      {emoji:'🪛', label:'Tools'},
+      {emoji:'💊', label:'Medicines / lab samples'},
+      {emoji:'📊', label:'Spreadsheets / charts'},
+      {emoji:'🎥', label:'Camera'},
+      {emoji:'⚖️', label:'Law books'},
+      {emoji:'🧠', label:'Brain scans / psych charts'},
+      {emoji:'💻', label:'Laptop terminal'},
+      {emoji:'🎤', label:'Microphone'},
+      {emoji:'🐕', label:'Animals'},
+      {emoji:'🌱', label:'Plants'},
+      {emoji:'🧵', label:'Fabric / patterns'},
+      {emoji:'🛫', label:'Map / atlas'}
+    ] },
+
+  /* ---------- AI-era specific ---------- */
+  { id:'ai_excite', type:'single-select', depth:['quick','medium','comprehensive'], category:'ai_era',
+    text:'How do you feel about AI showing up in your future work?',
+    options:['Excited — I want to use it daily and build with it','Curious but cautious — I want to learn it without depending on it','Neutral — I\'ll adapt when I have to','Worried — I want a career it can\'t easily replace','Hostile — I\'d rather stay far from it'] },
+
+  { id:'ai_comfort', type:'slider', depth:['medium','comprehensive'], category:'ai_era',
+    text:'How often do you already use AI tools (ChatGPT, Claude, image gen, etc.)?',
+    left:'Never', right:'Daily power user', min:0, max:10, suffix:'/10' },
+
+  { id:'ai_resilience_pref', type:'single-select', depth:['medium','comprehensive'], category:'ai_era',
+    text:'If two careers paid the same, which would you pick?',
+    options:[
+      'The one where AI is a tool that makes me 10× better — but I have to keep learning',
+      'The one AI struggles to do at all — physical, human, regulated, embodied',
+      'Either, honestly — depends on the work itself'
+    ] },
+
+  { id:'ai_newcareer', type:'likert', depth:['comprehensive'], category:'ai_era',
+    text:'I\'m open to careers that didn\'t exist 10 years ago — even if my parents have never heard of them.' },
+
+  /* ---------- Constraints (Indian context) ---------- */
+  { id:'cst_budget', type:'numeric', depth:['quick','medium','comprehensive'], category:'constraints',
+    text:'Roughly, what\'s your family\'s total budget for your higher education? (all years combined)',
+    min:0, max:300, step:1, suffix:'lakhs ₹', hint:'Including loans you\'re willing to take. Put 0 if money is very tight; put a high number if not a constraint.' },
+
+  { id:'cst_move', type:'single-select', depth:['quick','medium','comprehensive'], category:'constraints',
+    text:'How far are you actually willing to move for studies or work?',
+    options:['Stay in hometown','Same state','Anywhere in India','Anywhere in India + abroad','Abroad strongly preferred'] },
+
+  { id:'cst_family_pressure', type:'slider', depth:['quick','medium','comprehensive'], category:'constraints',
+    text:'How much pressure do you feel from family toward a specific career path?',
+    left:'No pressure — they trust me', right:'Very strong — specific field expected', min:0, max:10, suffix:'/10',
+    hint:'Honest answer helps. If high, we can talk strategy.' },
+
+  { id:'cst_family_field', type:'multi-select', depth:['medium','comprehensive'], category:'constraints',
+    text:'Which fields does your family actively want you in? (check all)',
+    options:['Engineering','Medicine','CA / Finance','Civil services / UPSC','Family business','Law','Government job (PSU / railways / banking)','Teaching','None — they\'re open'] },
+
+  { id:'cst_marriage_horizon', type:'single-select', depth:['comprehensive'], category:'constraints',
+    text:'Is marriage / family timeline something that constrains your career choice?',
+    options:['Not at all — far future','Yes — within 3–5 years I expect to factor it in','Yes — soon, it\'s on the table','Already married / partnered'] },
+
+  { id:'cst_disability', type:'single-select', depth:['comprehensive'], category:'constraints',
+    text:'Any health/disability/accessibility factors we should account for?',
+    options:['No','Yes — physical mobility','Yes — vision','Yes — hearing','Yes — mental health condition I manage','Yes — chronic illness','Prefer not to say'] },
+
+  { id:'cst_reservation', type:'single-select', depth:['comprehensive'], category:'constraints',
+    text:'Optional — eligible for reservation categories that affect entrance exam cutoffs?',
+    options:['General','OBC (non-creamy)','SC','ST','EWS','PwD','Prefer not to say'],
+    hint:'Only affects realistic cutoffs we suggest. Skip if uncomfortable — we\'ll just use general numbers.' },
+
+  { id:'cst_first_gen', type:'single-select', depth:['comprehensive'], category:'constraints',
+    text:'Are you a first-generation graduate (first in family to go to college)?',
+    options:['Yes','No','My parents went to college but not to a degree like the one I\'m planning'] },
+
+  /* ---------- More personal / honest ---------- */
+  { id:'p_pride', type:'single-select', depth:['comprehensive'], category:'personal',
+    text:'When you imagine being 35 and being introduced at a party, which line about your work would you most want said?',
+    options:[
+      '"They build things millions of people use."',
+      '"They\'re one of the top experts in a really hard field."',
+      '"They\'ve helped a lot of people personally — you can ask anyone."',
+      '"They run their own thing."',
+      '"They make seriously beautiful work."',
+      '"They\'re really senior at [respected institution] — very stable."',
+      '"They\'re doing original research that matters."',
+      '"Honestly I\'m not sure what they do — but they seem happy."'
+    ] },
+
+  { id:'p_fear', type:'single-select', depth:['comprehensive'], category:'personal',
+    text:'Which of these worries you most about your future career?',
+    options:[
+      'Wasting years on something I don\'t actually like',
+      'Not making enough money to support family',
+      'Being mediocre — not great at anything',
+      'AI making my degree irrelevant by the time I graduate',
+      'Being stuck in a city / role I hate',
+      'Disappointing my parents',
+      'Not having time / energy left for life outside work'
+    ] },
+
+  { id:'p_engineering_check', type:'single-select', depth:['quick','medium','comprehensive'], category:'personal',
+    text:'Honest gut check — is "engineering" feeling like a real interest or a default path?',
+    options:[
+      'Real interest — I actually like building/code/systems',
+      'Mostly default — it\'s what people around me chose',
+      'Mix — partly interest, partly safety',
+      'I\'m actively reconsidering it',
+      'Doesn\'t apply — I\'m not in/considering engineering'
+    ] },
+
+  { id:'p_alt_path', type:'multi-select', depth:['comprehensive'], category:'personal',
+    text:'Be brave for a second — which of these have you secretly wondered about, even if you wouldn\'t say it out loud?',
+    options:['Filmmaking / content creation','Music professionally','Becoming a doctor','Law','Civil services','Starting my own thing','Going abroad and never coming back','Design / fashion','Sports professionally','Becoming a writer','Academic research','Cooking / food','Teaching','Public policy / NGO','Defence / military','None — I\'m settled'] },
+
+  { id:'p_money_floor', type:'numeric', depth:['comprehensive'], category:'personal',
+    text:'Honest floor — what monthly income would feel "I\'m doing okay" to you in 5 years? (in ₹ thousand/month, take-home)',
+    min:0, max:500, step:5, suffix:'k/month' },
+
+  { id:'p_hours', type:'slider', depth:['comprehensive'], category:'personal',
+    text:'Genuinely — how many hours a week are you willing to put into work that\'s engaging?',
+    left:'30 hrs (life-first)', right:'70+ hrs (career-first)', min:30, max:80, suffix:'hrs/week' },
+
+  /* ---------- Final reflective ---------- */
+  { id:'final_open', type:'open-text', depth:['medium','comprehensive'], category:'reflection',
+    text:'Anything specific you want the matcher to know that none of the questions covered?',
+    hint:'Optional. e.g. "I love astronomy", "I want to work with my dad", "I have a stammer that affects me"... any signal helps.',
+    optional:true }
+];
+
+/* ======================================================================
+   STORAGE
+   ====================================================================== */
+function loadJSON(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+const Store = {
+  profile() { return loadJSON(STORAGE_KEY, { answers: {}, completedAt: null, updatedAt: null }); },
+  saveProfile(p) { p.updatedAt = new Date().toISOString(); saveJSON(STORAGE_KEY, p); updateProgressPill(); },
+  settings() { return Object.assign({}, DEFAULT_SETTINGS, loadJSON(SETTINGS_KEY, {})); },
+  saveSettings(s) { saveJSON(SETTINGS_KEY, s); },
+  results() { return loadJSON(RESULTS_KEY, null); },
+  saveResults(r) { saveJSON(RESULTS_KEY, r); },
+  chat() { return loadJSON(CHAT_KEY, []); },
+  saveChat(c) { saveJSON(CHAT_KEY, c); },
+  clearAll() {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(RESULTS_KEY);
+    localStorage.removeItem(CHAT_KEY);
+  }
+};
+
+/* ======================================================================
+   PROGRESS / COMPLETENESS
+   ====================================================================== */
+function questionsForDepth(depth) {
+  return QUESTIONS.filter(q => q.depth.includes(depth));
+}
+function profileCompleteness() {
+  const p = Store.profile();
+  const total = QUESTIONS.length;
+  const done = Object.keys(p.answers || {}).filter(k => QUESTIONS.find(q => q.id === k)).length;
+  return { done, total, pct: Math.round(100 * done / total) };
+}
+function updateProgressPill() {
+  const { done, total, pct } = profileCompleteness();
+  const pill = document.getElementById('prog-pill');
+  if (!pill) return;
+  if (done === 0) { pill.style.display = 'none'; return; }
+  pill.style.display = 'flex';
+  document.getElementById('prog-label').textContent = `profile ${pct}% (${done}/${total})`;
+  document.getElementById('prog-bar').style.width = pct + '%';
+}
+
+/* ======================================================================
+   ROUTER
+   ====================================================================== */
+const routes = {
+  home: renderHome,
+  settings: renderSettings,
+  profile: renderProfileView,
+  quiz: renderQuiz,
+  results: renderResults
+};
+function go(route, params) {
+  const url = '#/' + route + (params ? '?' + new URLSearchParams(params).toString() : '');
+  if (location.hash !== url) { location.hash = url; }
+  else { renderRoute(); }
+}
+function parseHash() {
+  const h = location.hash.slice(2) || 'home';
+  const [route, qs] = h.split('?');
+  const params = qs ? Object.fromEntries(new URLSearchParams(qs)) : {};
+  return { route, params };
+}
+function renderRoute() {
+  const { route, params } = parseHash();
+  document.querySelectorAll('header nav button').forEach(b => {
+    b.classList.toggle('active', b.dataset.route === route);
+  });
+  const fn = routes[route] || renderHome;
+  fn(params);
+}
+
+/* ======================================================================
+   VIEWS
+   ====================================================================== */
+
+function renderHome() {
+  const app = document.getElementById('app');
+  const { done, total, pct } = profileCompleteness();
+  const r = Store.results();
+  const hasProgress = done > 0;
+  app.innerHTML = `
+    <section class="hero">
+      <div>
+        <div class="tagline">// career.compass v1 — built for indian students, no fluff</div>
+        <h1>Figure out what you <span class="accent">actually</span> want to do.</h1>
+        <p class="lede">
+          You have one degree, four years, and a family watching. AI is also rearranging the deck while you decide.
+          This tool builds a careful profile of who you actually are — interests, aptitudes, values, constraints — and
+          uses Claude to suggest career paths and Indian degree routes that fit. Including ones your friends and family
+          probably haven't mentioned.
+        </p>
+      </div>
+
+      ${hasProgress ? `
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="dim mono" style="font-size:12px">resume where you left off</div>
+              <div style="font-size:18px; margin-top:4px;">Profile is <b>${pct}%</b> complete — ${done}/${total} questions answered.</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn primary" onclick="go('quiz', {depth:'continue'})">continue →</button>
+            ${r ? `<button class="btn" onclick="go('results')">see last results →</button>` : ''}
+          </div>
+        </div>
+      ` : ''}
+
+      <div>
+        <h2 style="margin-top:16px;">${hasProgress ? 'Or pick a different depth' : 'Pick where to start'}</h2>
+        <p class="muted">All three feed the same profile. Start short, come back and go deeper anytime. Each session takes the questions you haven't answered yet.</p>
+      </div>
+
+      <div class="depth-grid">
+        <div class="card depth-card" onclick="go('quiz',{depth:'quick'})">
+          <div class="tag">// QUICK</div>
+          <h3>First scan</h3>
+          <div class="muted">~18 questions, 7 minutes. Enough for a rough first read. Good if you're just trying this out.</div>
+          <div class="meta">→ likert · sliders · scenarios · constraints</div>
+        </div>
+        <div class="card depth-card" onclick="go('quiz',{depth:'medium'})">
+          <div class="tag">// MEDIUM</div>
+          <h3>Real picture</h3>
+          <div class="muted">~40 questions, 15–20 minutes. Adds personality, values ranking, work-style, AI attitudes. The sweet spot.</div>
+          <div class="meta">→ everything above + Big-Five + values + aptitudes + AI-era</div>
+        </div>
+        <div class="card depth-card" onclick="go('quiz',{depth:'comprehensive'})">
+          <div class="tag">// COMPREHENSIVE</div>
+          <h3>Full profile</h3>
+          <div class="muted">~90+ questions, 30–45 minutes. Work-sample energy meters, image preferences, honest fears, secret alternate paths. Most accurate matches.</div>
+          <div class="meta">→ everything + 18 work-samples + visuals + reflection</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <h3 style="margin:0;">Need an API key first</h3>
+            <div class="muted" style="margin-top:4px;">
+              Matching uses Claude. Paste your Anthropic API key into Settings — it stays in your browser only.
+              <a href="https://console.anthropic.com/settings/keys" target="_blank">Get one here →</a>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn" onclick="go('settings')">open settings →</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What this tool tries to do differently</h3>
+        <ul class="muted" style="margin:8px 0 0; padding-left:18px; line-height:1.7;">
+          <li>Take your <b>constraints seriously</b> — budget, location, family pressure — without pretending they don't exist.</li>
+          <li>Push back on <b>engineering-by-default</b> when your profile clearly points elsewhere.</li>
+          <li>Score each career on <b>AI-era resilience</b> — what AI is eating vs. what it can't easily reach.</li>
+          <li>Be honest about <b>Indian salary reality</b> (median vs. peak), not LinkedIn fantasy.</li>
+          <li>Surface 2–3 <b>stretch paths</b> you probably wouldn't pick yourself.</li>
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
+function renderSettings() {
+  const app = document.getElementById('app');
+  const s = Store.settings();
+  app.innerHTML = `
+    <h1>Settings</h1>
+    <p class="muted">Your API key never leaves your browser. It's sent directly from this page to <span class="mono">api.anthropic.com</span> — no middleman, no telemetry.</p>
+
+    <div class="card">
+      <label for="apikey">Anthropic API key</label>
+      <input type="password" id="apikey" placeholder="sk-ant-..." value="${escapeAttr(s.apiKey)}">
+      <div class="muted" style="margin-top:8px; font-size:12px;">Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com/settings/keys</a>. The cheapest model (Haiku) costs roughly ₹1–2 for a typical matching run.</div>
+    </div>
+
+    <div class="card">
+      <label for="model">Model</label>
+      <select id="model">
+        ${MODELS.map(m => `<option value="${m.id}" ${m.id===s.model?'selected':''}>${escapeHTML(m.label)}</option>`).join('')}
+      </select>
+      <div class="muted" style="margin-top:8px; font-size:12px;">Opus is sharper at counter-intuitive judgement calls (useful for stretch picks). Haiku is fine for a first pass.</div>
+    </div>
+
+    <div class="row">
+      <button class="btn primary" onclick="saveSettingsUI()">save</button>
+      <div class="spacer"></div>
+      <button class="btn danger" onclick="clearAllUI()">clear all my data</button>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3>Privacy</h3>
+      <ul class="muted" style="margin:8px 0 0; padding-left:18px; line-height:1.7;">
+        <li>Your answers live in your browser's localStorage. Nothing is uploaded anywhere except your raw profile JSON, sent directly to Anthropic when you generate matches.</li>
+        <li>Clear browser data = lose your profile. Use "Export" on the Profile page to keep a backup.</li>
+        <li>No accounts, no tracking. This is a static HTML file.</li>
+      </ul>
+    </div>
+  `;
+}
+function saveSettingsUI() {
+  const s = {
+    apiKey: document.getElementById('apikey').value.trim(),
+    model: document.getElementById('model').value
+  };
+  Store.saveSettings(s);
+  toast('settings saved');
+}
+function clearAllUI() {
+  if (!confirm('Delete all profile answers, results, and chat history? This cannot be undone.')) return;
+  Store.clearAll();
+  updateProgressPill();
+  toast('cleared');
+  go('home');
+}
+
+function renderProfileView() {
+  const app = document.getElementById('app');
+  const p = Store.profile();
+  const { done, total, pct } = profileCompleteness();
+  const byCategory = {};
+  QUESTIONS.forEach(q => {
+    if (p.answers[q.id] === undefined) return;
+    if (!byCategory[q.category]) byCategory[q.category] = [];
+    byCategory[q.category].push({ q, a: p.answers[q.id] });
+  });
+  const categoryLabels = {
+    context: 'Context', interests: 'Interests', personality: 'Personality',
+    aptitudes: 'Self-rated aptitudes', work_style: 'Work style', scenarios: 'Scenarios',
+    values: 'Values', work_samples: 'Work-sample reactions', visuals: 'Visual preferences',
+    ai_era: 'AI-era attitudes', constraints: 'Constraints', personal: 'Personal',
+    reflection: 'Reflection'
+  };
+
+  app.innerHTML = `
+    <h1>Your profile</h1>
+    <p class="muted">${done}/${total} questions answered (${pct}%). You can continue building it any time — quick / medium / comprehensive all merge into the same profile.</p>
+
+    <div class="row" style="margin: 12px 0 24px;">
+      <button class="btn primary" onclick="go('quiz',{depth:'continue'})">continue answering →</button>
+      <button class="btn" onclick="exportProfile()">export JSON</button>
+      <label class="btn" style="display:inline-flex; margin:0;">
+        import JSON
+        <input type="file" accept="application/json" style="display:none" onchange="importProfile(event)">
+      </label>
+      <div class="spacer"></div>
+      <button class="btn warm" onclick="generateMatches()">generate matches →</button>
+    </div>
+
+    ${Object.keys(byCategory).length === 0 ? `
+      <div class="card muted" style="text-align:center; padding: 40px;">
+        Nothing here yet. <a href="#/home">Start with a quick scan →</a>
+      </div>
+    ` : Object.entries(byCategory).map(([cat, list]) => `
+      <div class="card">
+        <h3>${escapeHTML(categoryLabels[cat] || cat)} <span class="dim mono" style="font-weight:400; font-size:12px;">// ${list.length} answered</span></h3>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+          ${list.map(({q,a}) => `
+            <div style="border-top:1px dashed var(--border); padding-top:10px;">
+              <div class="muted" style="font-size:13px;">${escapeHTML(q.text)}</div>
+              <div class="mono" style="font-size:13px; color: var(--accent); margin-top:4px;">${formatAnswer(q,a)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function formatAnswer(q, a) {
+  if (a === null || a === undefined || a === '') return '—';
+  if (q.type === 'likert') {
+    const labels = ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'];
+    return labels[a-1] || a;
+  }
+  if (q.type === 'slider') {
+    return `${a}${q.suffix||''}  ${q.left ? `(0=${q.left} → ${q.max}=${q.right})` : ''}`;
+  }
+  if (q.type === 'binary') {
+    return a === 'A' ? `A — ${q.optionA}` : `B — ${q.optionB}`;
+  }
+  if (q.type === 'multi-select' || q.type === 'image-pref') {
+    return Array.isArray(a) ? a.join(', ') : a;
+  }
+  if (q.type === 'ranking') {
+    return Array.isArray(a) ? a.map((x,i)=>`${i+1}. ${x}`).join(' · ') : a;
+  }
+  if (q.type === 'single-select') return a;
+  if (q.type === 'numeric') return `${a}${q.suffix?' '+q.suffix:''}`;
+  if (q.type === 'work-sample') {
+    return ['Draining','Meh','Okay','Engaged','Energized'][a] || a;
+  }
+  if (q.type === 'open-text') return a;
+  return String(a);
+}
+
+function exportProfile() {
+  const p = Store.profile();
+  const data = JSON.stringify(p, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `career-compass-profile-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importProfile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const p = JSON.parse(reader.result);
+      if (!p.answers) throw new Error('Invalid profile file');
+      Store.saveProfile(p);
+      toast('profile imported');
+      renderRoute();
+    } catch (err) {
+      alert('Could not import: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Quiz view ---------- */
+let quizState = null;
+
+function renderQuiz(params) {
+  const depth = params.depth || 'quick';
+  const p = Store.profile();
+  let pool;
+  if (depth === 'continue') {
+    pool = QUESTIONS.filter(q => p.answers[q.id] === undefined);
+  } else {
+    pool = questionsForDepth(depth).filter(q => p.answers[q.id] === undefined);
+  }
+  if (pool.length === 0) {
+    document.getElementById('app').innerHTML = `
+      <div class="card" style="text-align:center; padding: 60px;">
+        <h2>You're done with this set 🎉</h2>
+        <p class="muted">Every question in <b>${depth}</b> mode is answered. Want to go deeper or see results?</p>
+        <div class="row" style="justify-content:center; margin-top:16px;">
+          <button class="btn primary" onclick="go('quiz',{depth:'comprehensive'})">go deeper →</button>
+          <button class="btn warm" onclick="generateMatches()">generate matches →</button>
+          <button class="btn" onclick="go('profile')">see profile →</button>
+        </div>
+      </div>`;
+    return;
+  }
+  quizState = { pool, depth, idx: 0 };
+  renderCurrentQuestion();
+}
+
+function renderCurrentQuestion() {
+  if (!quizState) return;
+  const { pool, depth, idx } = quizState;
+  if (idx >= pool.length) {
+    // finished this batch
+    document.getElementById('app').innerHTML = `
+      <div class="card" style="text-align:center; padding: 60px;">
+        <h2>Batch complete 🎉</h2>
+        <p class="muted">You finished the <b>${depth}</b> set. ${profileCompleteness().pct}% of total profile done.</p>
+        <div class="row" style="justify-content:center; margin-top:16px;">
+          <button class="btn warm" onclick="generateMatches()">generate matches →</button>
+          <button class="btn" onclick="go('quiz',{depth:'comprehensive'})">keep going (comprehensive) →</button>
+          <button class="btn" onclick="go('profile')">see profile →</button>
+          <button class="btn ghost" onclick="go('home')">home</button>
+        </div>
+      </div>`;
+    return;
+  }
+  const q = pool[idx];
+  const p = Store.profile();
+  const existing = p.answers[q.id];
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="qhead">
+      <div>// ${escapeHTML(depth)} · question ${idx+1} of ${pool.length}</div>
+      <div class="right">
+        <span>${profileCompleteness().pct}% profile</span>
+        <button class="btn ghost" style="padding:4px 10px;" onclick="go('home')">save & exit</button>
+      </div>
+    </div>
+    <div class="qcard">
+      <div class="qcategory">// ${escapeHTML(q.category)} · ${escapeHTML(q.type)}</div>
+      <div class="qtext">${escapeHTML(q.text)}</div>
+      ${q.hint ? `<div class="qhint">${escapeHTML(q.hint)}</div>` : ''}
+      <div id="qbody"></div>
+      <div class="qactions">
+        <button class="btn ghost" onclick="quizPrev()" ${idx===0?'disabled':''}>← back</button>
+        <div class="right">
+          ${q.optional ? `<button class="btn ghost" onclick="quizSkip()">skip</button>` : ''}
+          <button class="btn primary" id="qnext">${idx === pool.length - 1 ? 'finish ✓' : 'next →'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderers[q.type](q, existing, document.getElementById('qbody'));
+
+  document.getElementById('qnext').addEventListener('click', () => {
+    const val = collectAnswer(q);
+    if (val === null && !q.optional) { toast('pick an answer first'); return; }
+    saveAnswerAndAdvance(q, val);
+  });
+}
+
+function quizPrev() {
+  if (!quizState || quizState.idx === 0) return;
+  quizState.idx--;
+  renderCurrentQuestion();
+}
+function quizSkip() {
+  if (!quizState) return;
+  quizState.idx++;
+  renderCurrentQuestion();
+}
+function saveAnswerAndAdvance(q, val) {
+  if (val !== null) {
+    const p = Store.profile();
+    p.answers[q.id] = val;
+    Store.saveProfile(p);
+  }
+  quizState.idx++;
+  renderCurrentQuestion();
+}
+
+/* ======================================================================
+   QUESTION RENDERERS
+   ====================================================================== */
+const renderers = {};
+let pendingAnswer = null;
+
+renderers['likert'] = (q, existing, root) => {
+  const labels = ['Strongly\ndisagree','Disagree','Neutral','Agree','Strongly\nagree'];
+  pendingAnswer = existing ?? null;
+  root.innerHTML = `<div class="likert">
+    ${labels.map((lbl, i) => `
+      <button data-val="${i+1}" class="${existing === i+1 ? 'selected':''}">
+        <span class="dot"></span>
+        <span>${lbl.split('\n').map(l=>`<div>${l}</div>`).join('')}</span>
+      </button>`).join('')}
+  </div>`;
+  root.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      root.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      pendingAnswer = parseInt(b.dataset.val);
+    });
+  });
+};
+
+renderers['slider'] = (q, existing, root) => {
+  const min = q.min ?? 0, max = q.max ?? 100;
+  const mid = Math.round((min+max)/2);
+  const val = existing ?? mid;
+  pendingAnswer = val;
+  root.innerHTML = `
+    <div class="slider-row">
+      <div class="label">${escapeHTML(q.left||'')}</div>
+      <input type="range" min="${min}" max="${max}" step="${q.step||1}" value="${val}" id="slid">
+      <div class="label right">${escapeHTML(q.right||'')}</div>
+    </div>
+    <div class="slider-val" id="slidval">${val}${q.suffix||''}</div>
+  `;
+  const slid = document.getElementById('slid');
+  const slidVal = document.getElementById('slidval');
+  slid.addEventListener('input', () => {
+    pendingAnswer = parseInt(slid.value);
+    slidVal.textContent = slid.value + (q.suffix||'');
+  });
+};
+
+renderers['binary'] = (q, existing, root) => {
+  pendingAnswer = existing ?? null;
+  root.innerHTML = `<div class="binary">
+    <div class="opt ${existing==='A'?'selected':''}" data-val="A">
+      <div class="tag">// option A</div>
+      <div class="body">${escapeHTML(q.optionA)}</div>
+    </div>
+    <div class="opt ${existing==='B'?'selected':''}" data-val="B">
+      <div class="tag">// option B</div>
+      <div class="body">${escapeHTML(q.optionB)}</div>
+    </div>
+  </div>`;
+  root.querySelectorAll('.opt').forEach(o => {
+    o.addEventListener('click', () => {
+      root.querySelectorAll('.opt').forEach(x => x.classList.remove('selected'));
+      o.classList.add('selected');
+      pendingAnswer = o.dataset.val;
+    });
+  });
+};
+
+renderers['multi-select'] = (q, existing, root) => {
+  const sel = new Set(existing || []);
+  pendingAnswer = Array.from(sel);
+  root.innerHTML = `<div class="chips">
+    ${q.options.map(opt => `<button data-val="${escapeAttr(opt)}" class="${sel.has(opt)?'selected':''}">${escapeHTML(opt)}</button>`).join('')}
+  </div>`;
+  root.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      const v = b.dataset.val;
+      if (sel.has(v)) { sel.delete(v); b.classList.remove('selected'); }
+      else { sel.add(v); b.classList.add('selected'); }
+      pendingAnswer = Array.from(sel);
+    });
+  });
+};
+
+renderers['ranking'] = (q, existing, root) => {
+  let order = existing ? [...existing] : [...q.items];
+  pendingAnswer = order;
+  function paint() {
+    root.innerHTML = `<div class="rank-list">
+      ${order.map((item, i) => `
+        <div class="rank-item">
+          <div class="num">#${i+1}</div>
+          <div class="body">${escapeHTML(item)}</div>
+          <div class="ctrls">
+            <button data-i="${i}" data-act="up" ${i===0?'disabled':''}>↑</button>
+            <button data-i="${i}" data-act="down" ${i===order.length-1?'disabled':''}>↓</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+    root.querySelectorAll('.ctrls button').forEach(b => {
+      b.addEventListener('click', () => {
+        const i = parseInt(b.dataset.i);
+        const act = b.dataset.act;
+        if (act === 'up' && i > 0) { [order[i-1],order[i]]=[order[i],order[i-1]]; }
+        if (act === 'down' && i < order.length-1) { [order[i+1],order[i]]=[order[i],order[i+1]]; }
+        pendingAnswer = order;
+        paint();
+      });
+    });
+  }
+  paint();
+};
+
+renderers['single-select'] = (q, existing, root) => {
+  pendingAnswer = existing ?? null;
+  root.innerHTML = `<div class="single-cards">
+    ${q.options.map(opt => `
+      <div class="opt ${existing===opt?'selected':''}" data-val="${escapeAttr(opt)}">
+        <div class="radio"></div>
+        <div>${escapeHTML(opt)}</div>
+      </div>
+    `).join('')}
+  </div>`;
+  root.querySelectorAll('.opt').forEach(o => {
+    o.addEventListener('click', () => {
+      root.querySelectorAll('.opt').forEach(x => x.classList.remove('selected'));
+      o.classList.add('selected');
+      pendingAnswer = o.dataset.val;
+    });
+  });
+};
+
+renderers['numeric'] = (q, existing, root) => {
+  pendingAnswer = existing ?? null;
+  root.innerHTML = `<div class="numeric">
+    <input type="number" id="nm" min="${q.min??0}" max="${q.max??9999}" step="${q.step??1}" value="${existing??''}" placeholder="${q.min??0}–${q.max??''}">
+    <div class="suffix">${escapeHTML(q.suffix||'')}</div>
+  </div>`;
+  document.getElementById('nm').addEventListener('input', e => {
+    pendingAnswer = e.target.value === '' ? null : parseFloat(e.target.value);
+  });
+};
+
+renderers['work-sample'] = (q, existing, root) => {
+  const labels = [
+    {emo:'😩', txt:'Draining'},
+    {emo:'😐', txt:'Meh'},
+    {emo:'🙂', txt:'Okay'},
+    {emo:'😊', txt:'Engaged'},
+    {emo:'🤩', txt:'Energized'}
+  ];
+  pendingAnswer = existing ?? null;
+  root.innerHTML = `<div class="energy">
+    ${labels.map((lbl, i) => `
+      <button data-val="${i}" class="lvl-${i} ${existing===i?'selected':''}">
+        <span class="emo">${lbl.emo}</span>
+        <span>${lbl.txt}</span>
+      </button>
+    `).join('')}
+  </div>`;
+  root.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      root.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      pendingAnswer = parseInt(b.dataset.val);
+    });
+  });
+};
+
+renderers['image-pref'] = (q, existing, root) => {
+  const sel = new Set(existing || []);
+  pendingAnswer = Array.from(sel);
+  function paint() {
+    root.innerHTML = `<div class="imgrid">
+      ${q.options.map(opt => `
+        <div class="opt ${sel.has(opt.label)?'selected':''}" data-val="${escapeAttr(opt.label)}">
+          <div class="badge">${sel.has(opt.label) ? Array.from(sel).indexOf(opt.label)+1 : ''}</div>
+          <div class="emo">${opt.emoji}</div>
+          <div class="lbl">${escapeHTML(opt.label)}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="muted mono" style="font-size:12px; margin-top:10px; text-align:center;">pick ${q.pickCount} · ${sel.size}/${q.pickCount} selected</div>`;
+    root.querySelectorAll('.opt').forEach(o => {
+      o.addEventListener('click', () => {
+        const v = o.dataset.val;
+        if (sel.has(v)) { sel.delete(v); }
+        else {
+          if (sel.size >= q.pickCount) { toast(`only pick ${q.pickCount}`); return; }
+          sel.add(v);
+        }
+        pendingAnswer = Array.from(sel);
+        paint();
+      });
+    });
+  }
+  paint();
+};
+
+renderers['open-text'] = (q, existing, root) => {
+  pendingAnswer = existing ?? '';
+  root.innerHTML = `<textarea id="opentxt" rows="4" placeholder="optional...">${escapeHTML(existing||'')}</textarea>`;
+  document.getElementById('opentxt').addEventListener('input', e => {
+    pendingAnswer = e.target.value;
+  });
+};
+
+function collectAnswer(q) {
+  if (q.type === 'multi-select' || q.type === 'image-pref') {
+    return (pendingAnswer && pendingAnswer.length > 0) ? pendingAnswer : (q.optional ? [] : null);
+  }
+  if (q.type === 'open-text') return pendingAnswer || (q.optional ? '' : null);
+  return pendingAnswer;
+}
+
+/* ======================================================================
+   RESULTS / MATCH GENERATION
+   ====================================================================== */
+
+const SYSTEM_PROMPT = `You are CAREER COMPASS — an honest, data-driven career counselor for Indian students figuring out what to do in a world where AI is reshaping careers fast.
+
+Your style:
+- Warm but blunt. Not corporate-counselor cheerful.
+- You take constraints (budget, location, family pressure, reservation, language) seriously without pretending they don't exist.
+- You actively push back on engineering-by-default when the profile clearly points elsewhere. Many Indian students drift into B.Tech because everyone around them did. If their profile says otherwise, say so.
+- You're honest about Indian salary reality — median outcomes, not LinkedIn fantasy. You distinguish median from top-decile.
+- You know the Indian education landscape: JEE (Mains/Advanced), NEET, CUET, CLAT, NID/NIFT, CA Foundation, UPSC, GATE, CAT, NDA, NATA, ICAR, BITSAT, AIIMS, NLU, IIM, IIT, NIT, IIIT, IISc, IISER, top private universities (Ashoka, Krea, Plaksha, Mahindra, Shiv Nadar, OP Jindal, Manipal, VIT, SRM), and realistic abroad options for Indian students (US/UK/EU/Canada/Australia/Singapore, with realistic costs and visa/work realities).
+- You know AI's current impact: entry-level coding, copywriting, design, simple legal/accounting/translation work, support — being eaten or augmented hard. Embodied work, regulated work, work requiring deep trust or novel judgement, work involving physical India — much less so.
+
+For AI resilience scoring 1–10:
+- 1–3 = AI is actively replacing this work today
+- 4–6 = AI is a heavy augmenter; entry-level squeezed, top performers fine
+- 7–8 = AI helps but core work is human/embodied/regulated
+- 9–10 = AI barely touches the core — physical, deeply human, novel-judgement, or licensed work
+
+When asked to match:
+- You MUST call the submit_career_matches tool. Output NO prose before or after — the UI renders the structured tool output.
+- Be specific. "Software engineer" is too broad. Say "AI/ML engineer at an Indian product company" or "Embedded systems engineer in EV/automotive" or "Quant developer at a prop trading shop in Mumbai" or "UX researcher at a fintech".
+- Tailor degree paths and entrance exams to the SPECIFIC career, with realistic Indian institutes ranked by access tier.
+- For stretch_recommendations: give 2–3 careers the student probably wouldn't pick themselves — explicitly counter their defaults (e.g. engineering bias, family pressure field). Defend the choice with profile evidence.`;
+
+const TOOL_SCHEMA = {
+  name: 'submit_career_matches',
+  description: 'Submit 5–7 ranked career matches plus 2–3 stretch recommendations for the student based on their profile.',
+  input_schema: {
+    type: 'object',
+    required: ['overall_pattern', 'matches', 'stretch_recommendations', 'caveats'],
+    properties: {
+      overall_pattern: {
+        type: 'string',
+        description: '3–5 sentences on what the profile says about this student — strengths, working style, what they actually care about. Honest, specific, not flattering.'
+      },
+      matches: {
+        type: 'array', minItems: 5, maxItems: 7,
+        items: {
+          type: 'object',
+          required: ['title','confidence','why_fits','ai_resilience_score','ai_resilience_reasoning','degree_paths','entrance_exams','salary_inr','reality_check','day_in_the_life','first_steps'],
+          properties: {
+            title: { type: 'string', description: 'Specific role title.' },
+            confidence: { type: 'integer', minimum: 0, maximum: 100, description: 'How confident this match is given the profile.' },
+            why_fits: { type: 'string', description: '3–5 sentences citing specific profile signals (e.g. "your ranking of autonomy first plus high X on Y").' },
+            ai_resilience_score: { type: 'integer', minimum: 1, maximum: 10 },
+            ai_resilience_reasoning: { type: 'string' },
+            degree_paths: {
+              type: 'array', minItems: 1,
+              items: {
+                type: 'object',
+                required: ['degree','duration','top_indian_options','abroad_alternatives'],
+                properties: {
+                  degree: { type: 'string' },
+                  duration: { type: 'string', description: 'e.g. "4 years" or "5 years integrated"' },
+                  top_indian_options: { type: 'array', items: { type: 'string' }, description: '3–5 realistic institutes given the profile budget/location' },
+                  abroad_alternatives: { type: 'array', items: { type: 'string' }, description: '1–3 realistic abroad routes' }
+                }
+              }
+            },
+            entrance_exams: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['name','difficulty','prep_months','notes'],
+                properties: {
+                  name: { type: 'string' },
+                  difficulty: { type: 'integer', minimum: 1, maximum: 10 },
+                  prep_months: { type: 'string' },
+                  notes: { type: 'string' }
+                }
+              }
+            },
+            salary_inr: {
+              type: 'object',
+              required: ['entry_lpa','mid_lpa','senior_lpa','notes'],
+              properties: {
+                entry_lpa: { type: 'string', description: 'realistic range in lakhs/year, e.g. "4–8 LPA"' },
+                mid_lpa: { type: 'string' },
+                senior_lpa: { type: 'string' },
+                notes: { type: 'string', description: 'Honest commentary: median vs peak, geography, top-tier vs typical' }
+              }
+            },
+            reality_check: { type: 'string', description: 'Common myths, hidden costs, mental-health realities, what surprises new entrants.' },
+            day_in_the_life: { type: 'string' },
+            first_steps: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 5, description: 'Concrete actions for the next 30 days.' }
+          }
+        }
+      },
+      stretch_recommendations: {
+        type: 'array', minItems: 2, maxItems: 3,
+        items: {
+          type: 'object',
+          required: ['title','why'],
+          properties: {
+            title: { type: 'string' },
+            why: { type: 'string', description: '2–3 sentences explaining why this might fit, with profile evidence. Why the student probably wouldn\'t consider it themselves.' }
+          }
+        }
+      },
+      caveats: { type: 'string', description: 'Honest disclaimers — what the profile didn\'t cover, what to verify with real-world experience.' }
+    }
+  }
+};
+
+function buildProfilePayload() {
+  const p = Store.profile();
+  const out = {};
+  QUESTIONS.forEach(q => {
+    const a = p.answers[q.id];
+    if (a === undefined || a === null || a === '') return;
+    out[q.id] = {
+      q: q.text,
+      cat: q.category,
+      type: q.type,
+      a: formatAnswer(q, a)
+    };
+  });
+  return out;
+}
+
+async function callClaude({ system, messages, tools, tool_choice, model, maxTokens=4096 }) {
+  const s = Store.settings();
+  if (!s.apiKey) throw new Error('No API key set. Open Settings and paste your Anthropic API key.');
+  const body = {
+    model: model || s.model,
+    max_tokens: maxTokens,
+    system,
+    messages
+  };
+  if (tools) body.tools = tools;
+  if (tool_choice) body.tool_choice = tool_choice;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': s.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`API ${res.status}: ${txt}`);
+  }
+  return res.json();
+}
+
+async function generateMatches() {
+  const { done } = profileCompleteness();
+  if (done < 8) {
+    if (!confirm(`You've only answered ${done} questions. Matches will be rough. Continue anyway?`)) return;
+  }
+  go('results', { generating: '1' });
+}
+
+async function renderResults(params) {
+  const app = document.getElementById('app');
+  if (params.generating === '1') {
+    app.innerHTML = `
+      <div class="card" style="text-align:center; padding: 60px;">
+        <div class="spinner" style="margin: 0 auto 16px;"></div>
+        <h2>thinking...</h2>
+        <p class="muted">Claude is reading your profile and reasoning through matches. Usually 15–45 seconds.</p>
+        <div id="gen-status" class="mono dim" style="font-size:12px; margin-top:12px;">→ sending profile to api.anthropic.com...</div>
+      </div>
+    `;
+    try {
+      const profile = buildProfilePayload();
+      const userMsg = `Here's the student's profile. Each entry shows the question and their answer.
+
+\`\`\`json
+${JSON.stringify(profile, null, 2)}
+\`\`\`
+
+Submit your career matches via the tool. Remember: be specific, push back on engineering-by-default if the profile suggests otherwise, and include 2–3 stretch recommendations.`;
+
+      document.getElementById('gen-status').textContent = '→ waiting for response...';
+
+      const resp = await callClaude({
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMsg }],
+        tools: [TOOL_SCHEMA],
+        tool_choice: { type: 'tool', name: 'submit_career_matches' },
+        maxTokens: 8192
+      });
+
+      const toolUse = resp.content.find(c => c.type === 'tool_use');
+      if (!toolUse) throw new Error('Model did not call the tool. Raw response: ' + JSON.stringify(resp.content));
+
+      const results = toolUse.input;
+      results.generatedAt = new Date().toISOString();
+      results.model = resp.model;
+      Store.saveResults(results);
+      go('results');
+    } catch (err) {
+      app.innerHTML = `
+        <div class="card" style="text-align:center; padding: 40px;">
+          <h2 style="color:var(--bad);">Couldn't generate matches</h2>
+          <p class="muted">${escapeHTML(err.message)}</p>
+          <div class="row" style="justify-content:center; margin-top:16px;">
+            <button class="btn" onclick="go('settings')">check settings →</button>
+            <button class="btn primary" onclick="go('results',{generating:'1'})">try again</button>
+          </div>
+        </div>`;
+    }
+    return;
+  }
+
+  const r = Store.results();
+  if (!r) {
+    app.innerHTML = `
+      <div class="card" style="text-align:center; padding: 60px;">
+        <h2>No results yet</h2>
+        <p class="muted">Answer some questions, then come back.</p>
+        <div class="row" style="justify-content:center; margin-top:16px;">
+          <button class="btn primary" onclick="go('home')">start →</button>
+          ${profileCompleteness().done > 0 ? `<button class="btn warm" onclick="generateMatches()">generate now →</button>` : ''}
+        </div>
+      </div>`;
+    return;
+  }
+
+  const aiLvl = score => score <= 3 ? 'lvl-low' : score <= 6 ? 'lvl-med' : 'lvl-high';
+  const aiTxt = score => score <= 3 ? 'AI is eating this' : score <= 6 ? 'AI augments heavily' : score <= 8 ? 'mostly human' : 'AI barely touches';
+
+  app.innerHTML = `
+    <div class="row" style="margin-bottom:16px;">
+      <div>
+        <h1 style="margin:0;">Your matches</h1>
+        <div class="muted mono" style="font-size:12px;">generated ${new Date(r.generatedAt).toLocaleString()} · model: ${escapeHTML(r.model||'?')} · profile ${profileCompleteness().pct}%</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn" onclick="go('quiz',{depth:'continue'})">answer more questions →</button>
+      <button class="btn warm" onclick="generateMatches()">regenerate</button>
+    </div>
+
+    <div class="overall">
+      <div class="label">// OVERALL PATTERN</div>
+      <div class="body">${escapeHTML(r.overall_pattern)}</div>
+    </div>
+
+    ${(r.matches || []).map((m, i) => `
+      <div class="match">
+        <div class="top">
+          <div>
+            <h2>${i+1}. ${escapeHTML(m.title)}</h2>
+            <span class="ai-pill ${aiLvl(m.ai_resilience_score)}"><span class="score">${m.ai_resilience_score}/10</span> ${aiTxt(m.ai_resilience_score)}</span>
+          </div>
+          <div class="conf"><div>confidence</div><div class="pct">${m.confidence}%</div></div>
+        </div>
+        <div class="why">${escapeHTML(m.why_fits)}</div>
+
+        <div class="grid">
+          <div class="panel">
+            <h4>Day in the life</h4>
+            <div class="muted" style="font-size:13px;">${escapeHTML(m.day_in_the_life)}</div>
+          </div>
+          <div class="panel">
+            <h4>Reality check</h4>
+            <div class="muted" style="font-size:13px;">${escapeHTML(m.reality_check)}</div>
+          </div>
+          <div class="panel">
+            <h4>AI resilience reasoning</h4>
+            <div class="muted" style="font-size:13px;">${escapeHTML(m.ai_resilience_reasoning)}</div>
+          </div>
+          <div class="panel">
+            <h4>Salary in India (₹)</h4>
+            <div class="salary-row">
+              <div class="cell"><div class="lbl">entry</div><div class="val">${escapeHTML(m.salary_inr.entry_lpa)}</div></div>
+              <div class="cell"><div class="lbl">mid</div><div class="val">${escapeHTML(m.salary_inr.mid_lpa)}</div></div>
+              <div class="cell"><div class="lbl">senior</div><div class="val">${escapeHTML(m.salary_inr.senior_lpa)}</div></div>
+            </div>
+            <div class="muted" style="font-size:12px; margin-top:8px;">${escapeHTML(m.salary_inr.notes)}</div>
+          </div>
+          <div class="panel">
+            <h4>Degree paths</h4>
+            ${(m.degree_paths || []).map(d => `
+              <div style="margin-bottom:10px;">
+                <div><b>${escapeHTML(d.degree)}</b> <span class="dim mono" style="font-size:12px;">· ${escapeHTML(d.duration)}</span></div>
+                <div class="muted" style="font-size:12px; margin-top:4px;"><b>India:</b> ${(d.top_indian_options||[]).map(escapeHTML).join(', ')}</div>
+                <div class="muted" style="font-size:12px;"><b>Abroad:</b> ${(d.abroad_alternatives||[]).map(escapeHTML).join(', ')}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="panel">
+            <h4>Entrance exams</h4>
+            <ul>
+              ${(m.entrance_exams || []).map(e => `
+                <li><b>${escapeHTML(e.name)}</b> <span class="dim mono">· difficulty ${e.difficulty}/10 · prep ${escapeHTML(e.prep_months)}</span><br><span class="muted" style="font-size:12px;">${escapeHTML(e.notes)}</span></li>
+              `).join('')}
+            </ul>
+          </div>
+          <div class="panel" style="grid-column:1/-1;">
+            <h4>First 30 days — concrete actions</h4>
+            <ul>${(m.first_steps || []).map(s => `<li>${escapeHTML(s)}</li>`).join('')}</ul>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <button class="btn ghost" onclick="askFollowup('${escapeAttr(m.title)}')">ask a follow-up about ${escapeHTML(m.title)} →</button>
+        </div>
+      </div>
+    `).join('')}
+
+    <h2 style="margin-top:32px;">Stretch picks <span class="dim mono" style="font-weight:400; font-size:13px;">// paths you probably wouldn't pick yourself</span></h2>
+    ${(r.stretch_recommendations || []).map(s => `
+      <div class="stretch-card">
+        <div class="title">${escapeHTML(s.title)}</div>
+        <div class="muted" style="margin-top:6px; font-size:14px;">${escapeHTML(s.why)}</div>
+      </div>
+    `).join('')}
+
+    <div class="card" style="margin-top:24px;">
+      <h3>Caveats</h3>
+      <div class="muted">${escapeHTML(r.caveats)}</div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3>Ask a follow-up</h3>
+      <p class="muted">Anything about these matches — "what if I'm not strong at math?", "is path X realistic with my budget?", "how does Y compare to Z?"</p>
+      <div id="chat-area"></div>
+      <div class="chatbox">
+        <input type="text" id="chatinp" placeholder="ask anything...">
+        <button class="btn primary" id="chatsend">send</button>
+      </div>
+    </div>
+
+    <details class="code-fold" style="margin-top:24px;">
+      <summary>raw JSON (for debugging or saving)</summary>
+      <pre>${escapeHTML(JSON.stringify(r, null, 2))}</pre>
+    </details>
+  `;
+  renderChatArea();
+  document.getElementById('chatsend').addEventListener('click', sendChat);
+  document.getElementById('chatinp').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+}
+
+function askFollowup(title) {
+  document.getElementById('chatinp').value = `Tell me more about ${title} — specifically how it might or might not fit me, and what I should worry about.`;
+  document.getElementById('chatinp').focus();
+  document.getElementById('chat-area').scrollIntoView({behavior:'smooth'});
+}
+
+function renderChatArea() {
+  const chat = Store.chat();
+  const area = document.getElementById('chat-area');
+  if (!area) return;
+  if (chat.length === 0) { area.innerHTML = ''; return; }
+  area.innerHTML = `<div class="chat">${chat.map(m => `
+    <div class="bubble ${m.role}">${escapeHTML(m.content).replace(/\n/g,'<br>')}</div>
+  `).join('')}</div>`;
+  area.scrollTop = area.scrollHeight;
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chatinp');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+  const chat = Store.chat();
+  chat.push({ role: 'user', content: q });
+  Store.saveChat(chat);
+  renderChatArea();
+
+  const area = document.getElementById('chat-area');
+  area.innerHTML += `<div class="chat"><div class="bubble bot"><span class="spinner"></span> thinking...</div></div>`;
+
+  try {
+    const profile = buildProfilePayload();
+    const results = Store.results();
+    const context = `STUDENT PROFILE (raw answers):
+\`\`\`json
+${JSON.stringify(profile, null, 2)}
+\`\`\`
+
+PREVIOUS MATCHES YOU GENERATED:
+\`\`\`json
+${JSON.stringify({ overall_pattern: results.overall_pattern, matches: results.matches.map(m => ({ title:m.title, why_fits:m.why_fits, ai_resilience_score:m.ai_resilience_score })), stretch: results.stretch_recommendations }, null, 2)}
+\`\`\``;
+
+    const messages = [
+      { role: 'user', content: context + '\n\nThe student now wants to ask follow-up questions about these matches. Answer warmly but bluntly, citing specific profile signals when relevant. Push back on engineering-by-default if it comes up. Keep responses 3–8 sentences unless they ask for more depth.' },
+      { role: 'assistant', content: 'Understood — I have their profile and my previous matches in context. Ready for their question.' },
+      ...chat.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
+    ];
+
+    const resp = await callClaude({
+      system: SYSTEM_PROMPT,
+      messages,
+      maxTokens: 1500
+    });
+    const reply = resp.content.filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
+    chat.push({ role: 'assistant', content: reply });
+    Store.saveChat(chat);
+    renderChatArea();
+  } catch (err) {
+    chat.push({ role: 'assistant', content: 'Error: ' + err.message });
+    Store.saveChat(chat);
+    renderChatArea();
+  }
+}
+
+/* ======================================================================
+   UTILITIES
+   ====================================================================== */
+function escapeHTML(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escapeAttr(s) { return escapeHTML(s); }
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ======================================================================
+   INIT
+   ====================================================================== */
+window.addEventListener('hashchange', renderRoute);
+document.querySelectorAll('header nav button').forEach(b => {
+  b.addEventListener('click', () => go(b.dataset.route));
+});
+
+// Expose for inline handlers
+window.go = go;
+window.generateMatches = generateMatches;
+window.exportProfile = exportProfile;
+window.importProfile = importProfile;
+window.saveSettingsUI = saveSettingsUI;
+window.clearAllUI = clearAllUI;
+window.quizPrev = quizPrev;
+window.quizSkip = quizSkip;
+window.askFollowup = askFollowup;
+
+updateProgressPill();
+renderRoute();
+</script>
+</body>
+</html>
