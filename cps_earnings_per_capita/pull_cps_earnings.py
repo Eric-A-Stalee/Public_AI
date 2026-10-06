@@ -276,7 +276,9 @@ def month_metrics(df, period, cpi, cpi_base, weight_col):
             "n_zero_pworwgt_le0": int((zero.PWORWGT <= 0).sum()),
             "weight_used": weight_col,
             "wt_earner_mil": w_e / 1e6, "wt_zero_mil": w_z / 1e6,
-            "topcoded_share_of_earners": float(ew[earn.PTWK.to_numpy() == 1].sum() / w_e),
+            # PTWK is blank in the May 2024 file: report unknown rather than 0
+            "topcoded_share_of_earners": (np.nan if earn.PTWK.isna().all()
+                                          else float(ew[earn.PTWK.to_numpy() == 1].sum() / w_e)),
             "max_earnings_nom": float(ex.max()),
             "earner_trimmed_mean_nom": trimmed,
         })

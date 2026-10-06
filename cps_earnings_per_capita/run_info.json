@@ -1,0 +1,10 @@
+{
+  "first_month": "2015-01",
+  "last_month": "2026-08",
+  "real_dollars_base_month": "2026-08",
+  "cpi_base": 334.98,
+  "skipped_months": [
+    "2025-10"
+  ],
+  "run_date": "2026-10-06"
+}
