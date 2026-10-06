@@ -4,13 +4,24 @@ Monthly series, **Jan 2015 – Aug 2026**, built from CPS basic monthly microdat
 
 | File | Contents |
 |---|---|
-| `cps_earnings_per_capita.csv` | Deliverable: one row per month × population (A–D), with the columns from the brief |
+| `cps_earnings_per_capita.csv` | Deliverable: one row per month × population (A–G), with the columns from the brief |
 | `pull_cps_earnings.py`, `requirements.txt` | Pull and compute script and its dependencies. Re-run monthly with `python3 pull_cps_earnings.py` |
 | `validation_vs_bls.csv` | Quarterly `ft_earner_median` (population D) compared with BLS |
 | `cps_earnings_diagnostics.csv` | Earner, zero and dropped counts; weight used; weight totals; topcoded share; max earnings; nominal trimmed mean |
 | `run_info.json` | Months covered, CPI base month and skipped months for the last run |
 
 Real dollars are **August 2026 dollars**, deflated with CPI-U NSA (FRED `CPIAUCNS`; August 2026 = 334.980). Each run re-bases to the latest CPS month that has a published CPI. If a month's CPI is not out yet, that month's real columns stay blank until a later run.
+
+## Addendum: age-split populations
+
+New populations: **E** (ages 18–25, all statuses), **F** (55–64, all statuses) and **G** (65+, excluding retired). They are appended after A–D, which are unchanged; that was verified against the previous output.
+
+New column `enrolled_share_of_zeros` is filled for E only (`PESCHENR`, positions 575–576 in every layout from 2015 to 2026).
+
+**Deviations from the addendum:**
+- The CPS enrollment universe is ages 16–54, not 16–24, and age-25 records do answer the question. Age 25 is still excluded from the share, as the addendum specified.
+- Zeros with no enrollment answer (`PESCHENR = -1`) are dropped from the share.
+- G has about 950–1,250 unweighted records per month, not the 2–3k expected. E has about 1,850–3,300 and F about 2,650–4,200.
 
 ## Deviations from the brief
 

@@ -55,6 +55,7 @@ FIELDS = {
     "PEMLR": (180, 181),
     "PRFTLF": (397, 398),
     "PRERELG": (498, 499),
+    "PESCHENR": (575, 576),  # enrolled in school last week; universe ages 16-54
     "PRERNWA": (527, 534),   # weekly earnings, 2 implied decimals
     "PTWK": (535, 535),      # weekly earnings topcode flag
     "PWORWGT": (603, 612),   # outgoing rotation weight, 4 implied decimals
@@ -66,6 +67,9 @@ POPULATIONS = {
     "B": lambda d: (d.PRTAGE >= 18) & (d.PRTAGE <= 64),
     "C": lambda d: (d.PRTAGE >= 25) & (d.PRTAGE <= 54),
     "D": lambda d: d.PRTAGE >= 18,
+    "E": lambda d: (d.PRTAGE >= 18) & (d.PRTAGE <= 25),
+    "F": lambda d: (d.PRTAGE >= 55) & (d.PRTAGE <= 64),
+    "G": lambda d: (d.PRTAGE >= 65) & (d.PEMLR != 5),
 }
 
 OUT_COLS = [
@@ -74,6 +78,7 @@ OUT_COLS = [
     "combined_median_nom", "combined_median_real",
     "earner_trimmed_mean_real", "per_capita_trimmed_mean_real",
     "ft_earner_median_nom", "cpi_u", "n_unweighted",
+    "enrolled_share_of_zeros",
 ]
 
 
@@ -138,6 +143,8 @@ def sanity_check(df, y, m):
         problems.append("PEMLR outside -1..7")
     if not df.PRERELG.isin([-1, 0, 1]).all():
         problems.append("PRERELG outside -1..1")
+    if not df.PESCHENR.isin([-1, 1, 2]).all():
+        problems.append("PESCHENR outside -1..2")
     # topcode was $2,884.61 through Mar 2023; from Apr 2023 topcoded cases carry
     # higher replacement values, so only check sign and plausibility here
     e = df.loc[df.PRERELG == 1, "PRERNWA"]
@@ -157,14 +164,16 @@ def load_month(y, m, cache_dir, refresh):
         return None
     last_mod = headers.get("Last-Modified", "")
     if cache.exists() and meta.exists() and not refresh:
-        if json.loads(meta.read_text()).get("last_modified") == last_mod:
+        m_ = json.loads(meta.read_text())
+        # re-extract when the file is re-issued or the field list changes
+        if m_.get("last_modified") == last_mod and m_.get("fields") == list(FIELDS):
             return pd.read_csv(cache)
     print(f"  downloading {url}", file=sys.stderr)
     _, raw = http_get(url)
     df = parse_dat(raw)
     sanity_check(df, y, m)
     df.to_csv(cache, index=False, compression="gzip")
-    meta.write_text(json.dumps({"url": url, "last_modified": last_mod}))
+    meta.write_text(json.dumps({"url": url, "last_modified": last_mod, "fields": list(FIELDS)}))
     return df
 
 
@@ -236,6 +245,13 @@ def classify(df):
     return d
 
 
+def enrolled_share(zero, weight_col):
+    """Weighted share of zeros aged 18-24 enrolled in school (PESCHENR == 1).
+    Age 25 is excluded per the brief; PESCHENR == -1 (no answer) is excluded too."""
+    z = zero[(zero.PRTAGE <= 24) & zero.PESCHENR.isin([1, 2])]
+    return float(z.loc[z.PESCHENR == 1, weight_col].sum() / z[weight_col].sum())
+
+
 def month_metrics(df, period, cpi, cpi_base, weight_col):
     d = classify(df)
     rows, diag = [], []
@@ -268,6 +284,7 @@ def month_metrics(df, period, cpi, cpi_base, weight_col):
             "ft_earner_median_nom": wquantile(ft.PRERNWA.to_numpy(), ft[weight_col].to_numpy(), 0.5),
             "cpi_u": cpi,
             "n_unweighted": len(earn) + len(zero),
+            "enrolled_share_of_zeros": enrolled_share(zero, weight_col) if pop == "E" else np.nan,
         })
         dropped = p[p.status == "dropped"]
         diag.append({
