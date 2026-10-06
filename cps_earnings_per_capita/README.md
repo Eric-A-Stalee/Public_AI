@@ -5,7 +5,7 @@ Monthly series, **Jan 2015 – Aug 2026**, built from CPS basic monthly microdat
 | File | Contents |
 |---|---|
 | `cps_earnings_per_capita.csv` | Deliverable: one row per month × population (A–D), with the columns from the brief |
-| `pull_cps_earnings.py` | Pull and compute script. Re-run monthly with `python3 pull_cps_earnings.py` |
+| `pull_cps_earnings.py`, `requirements.txt` | Pull and compute script and its dependencies. Re-run monthly with `python3 pull_cps_earnings.py` |
 | `validation_vs_bls.csv` | Quarterly `ft_earner_median` (population D) compared with BLS |
 | `cps_earnings_diagnostics.csv` | Earner, zero and dropped counts; weight used; weight totals; topcoded share; max earnings; nominal trimmed mean |
 | `run_info.json` | Months covered, CPI base month and skipped months for the last run |
@@ -32,7 +32,7 @@ The comparison is between `ft_earner_median` (population D, age 18+, `PRFTLF = 1
 - **45 complete quarters, 2015Q1–2026Q2:** mean absolute difference 0.42%, maximum 1.42% (2016Q2).
 - **2026Q2:** $1,250.00 here vs **$1,251** from BLS (−0.08%). 2026Q1: $1,236.67 vs $1,235.
 - 2025Q4 has no BLS value (appropriations lapse), and 2026Q3 is not yet published. Both are shown in the file with only 2 months of data.
-- The script stops with an error if any complete quarter is more than 5% off.
+- The script stops with an error if any complete quarter is more than 5% off, and in that case leaves the existing output files unchanged.
 
 ## Skipped months
 
@@ -49,6 +49,8 @@ The comparison is between `ft_earner_median` (population D, age 18+, `PRFTLF = 1
 - **Medians move in steps,** because reported earnings cluster at round amounts ($1,100, $1,200, …).
 
 ## Re-running
+
+Requires Python 3.9+ with pandas and numpy (`pip install -r requirements.txt`).
 
 ```
 python3 pull_cps_earnings.py            # incremental: only new or re-issued files are downloaded

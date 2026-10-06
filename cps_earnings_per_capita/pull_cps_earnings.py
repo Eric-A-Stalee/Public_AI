@@ -15,7 +15,7 @@ Data source: Census public-use files at
 These are the same microdata the Census API (api.census.gov/data/{YYYY}/cps/basic/{mon})
 serves; the API now refuses keyless requests, the bulk files do not.
 
-Usage:
+Usage (needs pandas and numpy: pip install -r requirements.txt):
   python3 pull_cps_earnings.py               # incremental update
   python3 pull_cps_earnings.py --refresh     # re-download every month
 """
@@ -287,7 +287,9 @@ def month_metrics(df, period, cpi, cpi_base, weight_col):
 
 # ---------------------------------------------------------------- validation
 
-def validate(out, out_dir):
+def validate(out):
+    """Quarterly ft_earner_median (population D) vs BLS. Exits before any output
+    file is touched if a complete quarter is more than 5% off."""
     bls = fred_series(BLS_MEDIAN_URL)
     bls.index = bls.index.asfreq("Q")
     d = out[out.population == "D"].copy()
@@ -298,13 +300,15 @@ def validate(out, out_dir):
     q["pct_diff"] = 100 * (q.ft_earner_median_nom / q.bls_median_usual_weekly_ft_nsa - 1)
     q = q.reset_index()
     q["quarter"] = q.quarter.astype(str)
-    q.to_csv(out_dir / "validation_vs_bls.csv", index=False, float_format="%.2f")
     full = q.dropna(subset=["pct_diff"])
     full = full[full.months_in_quarter == 3]
     print(f"validation: {len(full)} complete quarters, |pct_diff| mean {full.pct_diff.abs().mean():.2f}%, "
           f"max {full.pct_diff.abs().max():.2f}%", file=sys.stderr)
-    if full.pct_diff.abs().max() > 5:
-        raise SystemExit("ft_earner_median is >5% off BLS in some quarter; check scaling/filters before using output")
+    bad = full[full.pct_diff.abs() > 5]
+    if len(bad):
+        print(bad.to_string(index=False), file=sys.stderr)
+        raise SystemExit("ft_earner_median is >5% off BLS in the quarters above; "
+                         "existing output files left unchanged. Check scaling/filters.")
     return q
 
 
@@ -346,8 +350,10 @@ def main():
         diag += dg
 
     out = pd.DataFrame(rows)[OUT_COLS]
+    q = validate(out)
     out.to_csv(args.out_dir / "cps_earnings_per_capita.csv", index=False, float_format="%.4f")
     pd.DataFrame(diag).to_csv(args.out_dir / "cps_earnings_diagnostics.csv", index=False, float_format="%.4f")
+    q.to_csv(args.out_dir / "validation_vs_bls.csv", index=False, float_format="%.2f")
     (args.out_dir / "run_info.json").write_text(json.dumps({
         "first_month": str(min(frames)), "last_month": str(last),
         "real_dollars_base_month": str(cpi_base_month), "cpi_base": cpi_base,
@@ -355,8 +361,6 @@ def main():
     }, indent=2) + "\n")
     print(f"wrote {len(out)} rows, {min(frames)}..{last}; skipped: {gaps or 'none'}; "
           f"real $ base {cpi_base_month} (CPI {cpi_base})", file=sys.stderr)
-    validate(out, args.out_dir)
-
 
 if __name__ == "__main__":
     main()
