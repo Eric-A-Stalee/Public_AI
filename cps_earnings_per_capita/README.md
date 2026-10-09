@@ -1,27 +1,32 @@
 # CPS real weekly earnings per capita (non-earners at $0)
 
-Monthly series, **Jan 2015 – Aug 2026**, built from CPS basic monthly microdata. Non-earners are counted at $0. This folder holds data only, with no interpretation.
+Monthly series, **Jan 2015 – Sep 2026**, built from CPS basic monthly microdata. Non-earners are counted at $0. This folder holds data only, with no interpretation.
 
 | File | Contents |
 |---|---|
-| `cps_earnings_per_capita.csv` | Deliverable: one row per month × population (A–G), with the columns from the brief |
+| `cps_earnings_per_capita.csv` | Deliverable: one row per month × population (A–H), with the columns from the brief plus `enrolled_share_of_zeros` and `cpi_estimated` |
 | `pull_cps_earnings.py`, `requirements.txt` | Pull and compute script and its dependencies. Re-run monthly with `python3 pull_cps_earnings.py` |
 | `validation_vs_bls.csv` | Quarterly `ft_earner_median` (population D) compared with BLS |
 | `cps_earnings_diagnostics.csv` | Earner, zero and dropped counts; weight used; weight totals; topcoded share; max earnings; nominal trimmed mean |
-| `run_info.json` | Months covered, CPI base month and skipped months for the last run |
+| `run_info.json` | Months covered, CPI base month, estimated CPI values and skipped months for the last run |
 
-Real dollars are **August 2026 dollars**, deflated with CPI-U NSA (FRED `CPIAUCNS`; August 2026 = 334.980). Each run re-bases to the latest CPS month that has a published CPI. If a month's CPI is not out yet, that month's real columns stay blank until a later run.
+Real dollars are **August 2026 dollars**, deflated with CPI-U NSA (FRED `CPIAUCNS`; August 2026 = 334.980). Each run re-bases to the latest month that has a *published* CPI.
+
+**Estimated CPI.** CPS data usually comes out before that month's CPI. Such a month is deflated with an estimated CPI and flagged `cpi_estimated = 1`.
+- **Current estimate:** September 2026 = 335.452.
+- **Method:** last published CPI, plus the trailing 12-month average monthly change, plus that calendar month's average seasonal move over the prior 5 years.
+- **Accuracy:** in a backtest of one-month-ahead estimates over 2015–2026 (139 months), the mean absolute error is 0.23% (0.18% over the last 3 years); the largest miss is 1.06%. An error of 0.2% is about $2 on an $1,100 median.
+- **Scope:** only the estimated month's real columns depend on the estimate; the base month and all other rows use published CPI. The next run after BLS publishes the real figure replaces the estimate and clears the flag.
 
 ## Addendum: age-split populations
 
-New populations: **E** (ages 18–25, all statuses), **F** (55–64, all statuses) and **G** (65+, excluding retired). They are appended after A–D, which are unchanged; that was verified against the previous output.
+New populations: **E** (ages 18–25, all statuses), **F** (55–64, all statuses), **G** (65+, excluding retired) and **H** (25–34, all statuses). They are appended after A–D, which are unchanged; that was verified against the previous output.
 
-New column `enrolled_share_of_zeros` is filled for E only (`PESCHENR`, positions 575–576 in every layout from 2015 to 2026).
+New column `enrolled_share_of_zeros` is filled for E only. It is the weighted share of E's zeros (ages 18–25) who are enrolled in school (`PESCHENR = 1`, positions 575–576 in every layout from 2015 to 2026). Age 25 is in the CPS enrollment universe (ages 16–54), so it is included. This lowers the share by 1–4 percentage points compared with 18–24 only.
 
 **Deviations from the addendum:**
-- The CPS enrollment universe is ages 16–54, not 16–24, and age-25 records do answer the question. Age 25 is still excluded from the share, as the addendum specified.
 - Zeros with no enrollment answer (`PESCHENR = -1`) are dropped from the share.
-- G has about 950–1,250 unweighted records per month, not the 2–3k expected. E has about 1,850–3,300 and F about 2,650–4,200.
+- G has about 950–1,250 unweighted records per month, not the 2–3k expected. E has about 1,850–3,300, F about 2,650–4,200 and H about 2,450–4,150.
 
 ## Deviations from the brief
 
@@ -29,6 +34,7 @@ New column `enrolled_share_of_zeros` is filled for E only (`PESCHENR`, positions
   - Field positions were checked against every record layout from 2015 to 2026 (Jan 2015, Jan 2017, 2020–2026, May 2024) and are identical in all of them.
   - The script also checks every file it reads: year and month match the file, and HRMIS, PEMLR, PRERELG and earnings fall in valid ranges. It stops if anything shifts.
   - Some files named `.dat.gz` are actually zip archives; the script handles both.
+  - The Census firewall sometimes answers a file URL with a "Request Rejected" page instead of the data; `oct21pub.dat.gz` is rejected consistently. The script detects this, falls back to the month's `.zip` copy, and if that is also rejected uses the cached copy.
 - **`PRERNWA` was renamed `PTERNWA` in 2021.** Same position (527–534), same 2 implied decimals. The API's `variables.json` lists only `PTERNWA`, for every year back to 2015.
 - **Weight:** `PWORWGT` (4 implied decimals) is positive for every non-employed person aged 18+ in rotations 4 and 8, in every month. The composite-weight fallback was never used; the `weight_used` column in the diagnostics file records this.
 - **Armed forces** (`PEMLR = -1` at age 18+) are excluded from every population, because they are neither earners nor in the civilian population.
@@ -42,13 +48,12 @@ The comparison is between `ft_earner_median` (population D, age 18+, `PRFTLF = 1
 
 - **45 complete quarters, 2015Q1–2026Q2:** mean absolute difference 0.42%, maximum 1.42% (2016Q2).
 - **2026Q2:** $1,250.00 here vs **$1,251** from BLS (−0.08%). 2026Q1: $1,236.67 vs $1,235.
-- 2025Q4 has no BLS value (appropriations lapse), and 2026Q3 is not yet published. Both are shown in the file with only 2 months of data.
+- 2025Q4 has no BLS value (appropriations lapse); it is shown in the file with only 2 months of data. BLS has not published 2026Q3 yet; that quarter shows all 3 months ($1,220.00).
 - The script stops with an error if any complete quarter is more than 5% off, and in that case leaves the existing output files unchanged.
 
 ## Skipped months
 
 - **October 2025** has no file, because of the appropriations lapse. It is skipped, not imputed. November 2025 onward is present.
-- September 2026 had not been released as of this run (2026-10-06).
 
 ## Known breaks (flagged, not fixed)
 

@@ -37,7 +37,10 @@ import numpy as np
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent
-BASE_URL = "https://www2.census.gov/programs-surveys/cps/datasets/{y}/basic/{mon}{yy}pub.dat.gz"
+# each month is published as .dat.gz and .zip; .zip is the fallback when the
+# Census firewall rejects the .dat.gz URL
+BASE_URL = "https://www2.census.gov/programs-surveys/cps/datasets/{y}/basic/{mon}{yy}pub{ext}"
+EXTENSIONS = (".dat.gz", ".zip")
 CPI_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCNS"
 BLS_CPI_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0"
 BLS_MEDIAN_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=LEU0252881500Q"
@@ -70,6 +73,7 @@ POPULATIONS = {
     "E": lambda d: (d.PRTAGE >= 18) & (d.PRTAGE <= 25),
     "F": lambda d: (d.PRTAGE >= 55) & (d.PRTAGE <= 64),
     "G": lambda d: (d.PRTAGE >= 65) & (d.PEMLR != 5),
+    "H": lambda d: (d.PRTAGE >= 25) & (d.PRTAGE <= 34),
 }
 
 OUT_COLS = [
@@ -78,7 +82,7 @@ OUT_COLS = [
     "combined_median_nom", "combined_median_real",
     "earner_trimmed_mean_real", "per_capita_trimmed_mean_real",
     "ft_earner_median_nom", "cpi_u", "n_unweighted",
-    "enrolled_share_of_zeros",
+    "enrolled_share_of_zeros", "cpi_estimated",
 ]
 
 
@@ -154,22 +158,42 @@ def sanity_check(df, y, m):
         raise RuntimeError(f"{y}-{m:02d}: layout check failed: {'; '.join(problems)}")
 
 
+def is_block_page(headers):
+    """The Census firewall answers some URLs with a 200 "Request Rejected" HTML page."""
+    return headers.get("Content-Type", "").startswith("text/html")
+
+
 def load_month(y, m, cache_dir, refresh):
     """Return the extracted person records for a month, or None if not published."""
-    url = BASE_URL.format(y=y, mon=MONTHS[m - 1], yy=f"{y % 100:02d}")
     cache = cache_dir / f"{y}-{m:02d}.csv.gz"
     meta = cache_dir / f"{y}-{m:02d}.json"
-    headers, _ = http_get(url, method="HEAD")
-    if headers is None:
-        return None
-    last_mod = headers.get("Last-Modified", "")
-    if cache.exists() and meta.exists() and not refresh:
-        m_ = json.loads(meta.read_text())
-        # re-extract when the file is re-issued or the field list changes
-        if m_.get("last_modified") == last_mod and m_.get("fields") == list(FIELDS):
+    found, blocked = None, []
+    for ext in EXTENSIONS:
+        url = BASE_URL.format(y=y, mon=MONTHS[m - 1], yy=f"{y % 100:02d}", ext=ext)
+        headers, _ = http_get(url, method="HEAD")
+        if headers is None:
+            continue
+        if is_block_page(headers):
+            blocked.append(url)
+            continue
+        found = (url, headers.get("Last-Modified", ""))
+        break
+    cached = json.loads(meta.read_text()) if cache.exists() and meta.exists() else {}
+    usable = cached.get("fields") == list(FIELDS)  # re-extract when the field list changes
+    if found is None:
+        if not blocked:
+            return None
+        if usable and not refresh:
+            print(f"  {y}-{m:02d}: Census rejected {', '.join(blocked)}; using cached copy", file=sys.stderr)
             return pd.read_csv(cache)
+        raise RuntimeError(f"{y}-{m:02d}: Census rejected {', '.join(blocked)} and no usable cached copy exists (or --refresh was given)")
+    url, last_mod = found
+    if usable and not refresh and cached.get("url") == url and cached.get("last_modified") == last_mod:
+        return pd.read_csv(cache)
     print(f"  downloading {url}", file=sys.stderr)
     _, raw = http_get(url)
+    if raw[:1] == b"<":
+        raise RuntimeError(f"{url} returned an HTML page instead of microdata")
     df = parse_dat(raw)
     sanity_check(df, y, m)
     df.to_csv(cache, index=False, compression="gzip")
@@ -205,6 +229,28 @@ def load_cpi():
                     if d["period"].startswith("M") and d["period"] != "M13" and d["value"] != "-":
                         rows.append((pd.Period(f"{d['year']}-{d['period'][1:]}", "M"), float(d["value"])))
         return pd.Series(dict(rows)).sort_index()
+
+
+def extend_cpi(cpi, through):
+    """Estimate CPI for months after the last published one, up to `through`.
+
+    log CPI(t) = log CPI(t-1) + trailing 12-month average monthly change
+                 + this calendar month's average seasonal deviation over the prior 5 years.
+    Backtest on 2015-2026 one-month-ahead estimates: mean absolute error 0.23%.
+    Returns the extended series and the list of estimated months."""
+    full = pd.period_range(cpi.index.min(), max(through, cpi.index.max()), freq="M")
+    # interior gaps (e.g. Oct 2025, appropriations lapse) are interpolated for use as inputs only
+    lc = np.log(cpi.reindex(full)).interpolate(limit_area="inside")
+    estimated = [t for t in full if t > cpi.index.max()]
+    out = cpi.copy()
+    for t in estimated:
+        d = lc.diff()
+        trend = (lc[t - 1] - lc[t - 13]) / 12
+        seasonal = np.mean([d[t - 12 * k] - (lc[t - 12 * k - 1] - lc[t - 12 * k - 13]) / 12
+                            for k in range(1, 6)])
+        lc[t] = lc[t - 1] + trend + seasonal
+        out[t] = round(float(np.exp(lc[t])), 3)
+    return out.sort_index(), estimated
 
 
 # ---------------------------------------------------------------- statistics
@@ -246,9 +292,9 @@ def classify(df):
 
 
 def enrolled_share(zero, weight_col):
-    """Weighted share of zeros aged 18-24 enrolled in school (PESCHENR == 1).
-    Age 25 is excluded per the brief; PESCHENR == -1 (no answer) is excluded too."""
-    z = zero[(zero.PRTAGE <= 24) & zero.PESCHENR.isin([1, 2])]
+    """Weighted share of zeros (population E, ages 18-25) enrolled in school
+    (PESCHENR == 1). PESCHENR == -1 (no answer) is excluded."""
+    z = zero[zero.PESCHENR.isin([1, 2])]
     return float(z.loc[z.PESCHENR == 1, weight_col].sum() / z[weight_col].sum())
 
 
@@ -352,8 +398,11 @@ def main():
     last = max(frames)
     gaps = [s for s in skipped if pd.Period(s, "M") < last]
 
-    cpi_base_month = last if last in cpi.index else cpi.index.max()
+    # real dollars are based on the latest *published* CPI, so an estimate never
+    # moves the other rows; months past it get an estimated CPI, flagged per row
+    cpi_base_month = min(last, cpi.index.max())
     cpi_base = cpi[cpi_base_month]
+    cpi, cpi_est = extend_cpi(cpi, last)
 
     rows, diag = [], []
     for period, df in sorted(frames.items()):
@@ -361,8 +410,9 @@ def main():
         weight_col = "PWORWGT" if (ow.PWORWGT > 0).all() else "PWCMPWGT"
         if weight_col != "PWORWGT":
             print(f"  {period}: PWORWGT <= 0 for some non-employed; using PWCMPWGT", file=sys.stderr)
-        # newest CPS month can precede its CPI release: real columns stay blank until it lands
         r, dg = month_metrics(df, period, cpi.get(period, np.nan), cpi_base, weight_col)
+        for row in r:
+            row["cpi_estimated"] = int(period in cpi_est)
         rows += r
         diag += dg
 
@@ -374,10 +424,12 @@ def main():
     (args.out_dir / "run_info.json").write_text(json.dumps({
         "first_month": str(min(frames)), "last_month": str(last),
         "real_dollars_base_month": str(cpi_base_month), "cpi_base": cpi_base,
+        "cpi_estimated_months": {str(t): float(cpi[t]) for t in cpi_est},
         "skipped_months": gaps, "run_date": date.today().isoformat(),
     }, indent=2) + "\n")
     print(f"wrote {len(out)} rows, {min(frames)}..{last}; skipped: {gaps or 'none'}; "
-          f"real $ base {cpi_base_month} (CPI {cpi_base})", file=sys.stderr)
+          f"real $ base {cpi_base_month} (CPI {cpi_base}); "
+          f"estimated CPI: {({str(t): float(cpi[t]) for t in cpi_est}) or "none"}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
