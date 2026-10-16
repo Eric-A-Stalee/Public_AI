@@ -1,0 +1,53 @@
+name: Macro Terminal checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Perplexity_Computer/Macro_Terminal/**'
+      - '.github/workflows/macro-terminal-ci.yml'
+      - '.github/workflows/macro-terminal-refresh.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Perplexity_Computer/Macro_Terminal/**'
+      - '.github/workflows/macro-terminal-ci.yml'
+      - '.github/workflows/macro-terminal-refresh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macro-terminal-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Perplexity_Computer/Macro_Terminal
+    steps:
+      - name: Check out code without write credentials
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Perplexity_Computer/Macro_Terminal/package-lock.json
+      - run: npm ci
+      # Provider requests and browser datasets are mocked. PRs need no API keys
+      # and do not depend on FRED availability or change the published snapshot.
+      - name: Validate calculations and collection failure handling
+        run: npm test
+      - name: Build production assets
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise the dashboard in Chromium
+        run: npm run test:browser
