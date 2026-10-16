@@ -1,0 +1,139 @@
+name: Refresh Macro Terminal and deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Perplexity_Computer/Macro_Terminal/**'
+      - 'career-finder/index.html'
+      - '.github/workflows/macro-terminal-refresh.yml'
+  schedule:
+    # UTC, every eight hours; away from the busy start of each hour.
+    - cron: '17 2,10,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One refresh/deployment at a time, including manual and push-triggered runs.
+# Do not cancel a run between its data commit and Pages deployment.
+concurrency:
+  group: public-ai-pages
+  cancel-in-progress: false
+
+jobs:
+  refresh-build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      pages: read
+    outputs:
+      source_sha: ${{ steps.persist.outputs.source_sha }}
+    defaults:
+      run:
+        working-directory: Perplexity_Computer/Macro_Terminal
+    steps:
+      # A scheduled or queued run starts with the latest main, not an older event
+      # revision. A later concurrent main commit is handled by the checks below.
+      - name: Check out current main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci
+      - name: Validate calculations and collection failure handling
+        run: npm test
+      - name: Refresh observations
+        run: npm run refresh:data
+        env:
+          # Optional; an empty secret selects the public FRED CSV adapter.
+          # The key exists only in this step, never in browser/VITE_ variables.
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      - name: Build production assets
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise the dashboard in Chromium
+        run: npm run test:browser
+      - name: Verify Pages is configured
+        uses: actions/configure-pages@v5
+        with:
+          # Configure Settings → Pages → Source → GitHub Actions first.
+          # This workflow never enables Pages or changes repository settings.
+          enablement: false
+      - name: Stage only the public applications
+        working-directory: .
+        run: |
+          mkdir -p _site/Perplexity_Computer/Macro_Terminal _site/career-finder
+          cp -a Perplexity_Computer/Macro_Terminal/dist/. _site/Perplexity_Computer/Macro_Terminal/
+          cp career-finder/index.html _site/career-finder/index.html
+          touch _site/.nojekyll
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Public AI projects</title>
+          <style>body{max-width:44rem;margin:4rem auto;padding:0 1.5rem;font:18px/1.6 system-ui;background:#10141c;color:#e3eaf3}a{color:#79c9f8}</style>
+          <h1>Public AI projects</h1>
+          <p><a href="./Perplexity_Computer/Macro_Terminal/">Macro Terminal</a></p>
+          <p><a href="./career-finder/">Career Finder</a></p>
+          </html>
+          HTML
+      - name: Persist only the refreshed snapshot
+        id: persist
+        working-directory: .
+        run: |
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo '::error::main changed during this run. Re-run the workflow against current main; no stale build will be deployed.'
+            exit 1
+          fi
+          git add -- Perplexity_Computer/Macro_Terminal/public/data/latest.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore(macro-terminal): refresh economic observations'
+            # A non-fast-forward or protection rejection fails the job. Never
+            # force-push, rebase a stale build, or deploy after a failed push.
+            git push origin HEAD:main
+          fi
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Upload the static site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: refresh-build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Ensure main still matches the staged site
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.refresh-build.outputs.source_sha }}
+        run: |
+          current_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
+          if [ "$current_sha" != "$EXPECTED_SHA" ]; then
+            echo '::error::main changed before deployment. Re-run the workflow to publish the current revision.'
+            exit 1
+          fi
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
