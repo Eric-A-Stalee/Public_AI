@@ -83,6 +83,15 @@ test("cumulative plotting intervals preserve the full-period totals and series c
     panel.getByRole("combobox", { name: "Starting month", exact: true }),
   ).toHaveValue("");
   await expectTotals(panel, "25.00%", "30.00%", "4.00%");
+  await expect(panel.getByTestId("cumulative-index-prices")).toContainText(
+    "125.00",
+  );
+  await expect(panel.getByTestId("cumulative-index-earnings")).toContainText(
+    "130.00",
+  );
+  await expect(
+    panel.getByTestId("cumulative-index-realEarnings"),
+  ).toContainText("104.00");
   await expect(
     panel.getByTestId("cumulative-nominal-chart").locator(".recharts-line"),
   ).toHaveCount(2);
@@ -107,10 +116,25 @@ test("cumulative plotting intervals preserve the full-period totals and series c
         .filter({ hasText: "Jan 2024 · start" });
       await expect(baseline.locator("td")).toHaveText([
         "Jan 2024 · start",
+        "100.00",
+        "100.00",
+        "100.00",
+      ]);
+      await panel
+        .getByRole("group", { name: "Cumulative value scale" })
+        .getByRole("button", { name: "% change", exact: true })
+        .click();
+      await expect(baseline.locator("td")).toHaveText([
+        "Jan 2024 · start",
         "0.00%",
         "0.00%",
         "0.00%",
       ]);
+      await expectTotals(panel, "25.00%", "30.00%", "4.00%");
+      await panel
+        .getByRole("group", { name: "Cumulative value scale" })
+        .getByRole("button", { name: "Index (100)", exact: true })
+        .click();
       await methodology.locator("summary").click();
     }
   }
@@ -146,6 +170,10 @@ test("a custom baseline persists between tabs and prints once with the chosen pl
   await panel
     .getByRole("combobox", { name: "Starting month", exact: true })
     .selectOption("2025-01");
+  await panel
+    .getByRole("group", { name: "Cumulative value scale" })
+    .getByRole("button", { name: "% change", exact: true })
+    .click();
   await intervalGroup(panel)
     .getByRole("button", { name: "Quarterly", exact: true })
     .click();
@@ -156,6 +184,11 @@ test("a custom baseline persists between tabs and prints once with the chosen pl
 
   await page.getByTestId("tab-labor").click();
   panel = screenPanel(page);
+  await expect(
+    panel
+      .getByRole("group", { name: "Cumulative value scale" })
+      .getByRole("button", { name: "% change", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(
     panel.getByRole("combobox", { name: "Starting month", exact: true }),
   ).toHaveValue("2025-01");
@@ -304,5 +337,50 @@ test("isolated annual observations remain visible across missing monthly data", 
     const box = await points.first().boundingBox();
     expect(box.width).toBeGreaterThan(0);
     expect(box.height).toBeGreaterThan(0);
+  }
+});
+
+test("the base-100 index compounds 3%, 2%, then 9% and keeps the same total at every interval", async ({
+  page,
+}) => {
+  const snapshot = cumulativeSnapshot();
+  const dates = ["2024-01-01", "2024-02-01", "2024-03-01", "2024-04-01"];
+  snapshot.series.CPIAUCSL.observations = dates.map((date) => ({
+    date,
+    value: 100,
+  }));
+  snapshot.series.CES0500000003.observations = [20, 20.6, 21.012, 22.90308].map(
+    (value, index) => ({ date: dates[index], value }),
+  );
+  await openInflation(page, () => snapshot);
+  const panel = screenPanel(page);
+  await expectTotals(panel, "0.00%", "14.52%", "14.52%");
+  await expect(panel.getByTestId("cumulative-index-earnings")).toContainText(
+    "114.52",
+  );
+  await expect(
+    panel.getByTestId("cumulative-index-realEarnings"),
+  ).toContainText("114.52");
+  const methodology = panel.locator(".cumulative-method");
+  await methodology.locator("summary").click();
+  for (const [month, level] of [
+    ["Jan 2024 · start", "100.00"],
+    ["Feb 2024", "103.00"],
+    ["Mar 2024", "105.06"],
+    ["Apr 2024", "114.52"],
+  ]) {
+    const row = methodology
+      .getByRole("row")
+      .filter({ has: page.getByRole("cell", { name: month, exact: true }) });
+    await expect(row.locator("td")).toHaveText([month, "100.00", level, level]);
+  }
+  for (const interval of ["Quarterly", "Yearly"]) {
+    await intervalGroup(panel)
+      .getByRole("button", { name: interval, exact: true })
+      .click();
+    await expectTotals(panel, "0.00%", "14.52%", "14.52%");
+    await expect(
+      panel.getByTestId("cumulative-index-realEarnings"),
+    ).toContainText("114.52");
   }
 });
