@@ -92,6 +92,24 @@ The default configuration collects 34 FRED series and keeps one restricted serie
 
 Exact calendar lags matter. A missing month does not make the previous available month a valid substitute for a one-month or twelve-month comparison. Historical observations can be revised, including payroll benchmarks and seasonal adjustments. All calculations use the currently retrieved vintage; this is not a point-in-time backtesting dataset.
 
+### Cumulative inflation and hourly earnings
+
+The Inflation and Labor tabs share a cumulative comparison with three views: inflation, nominal average hourly earnings, or both on the same percentage axis. Both series start at 0% in the selected month. The companion chart shows the change in real hourly earnings, so a widening nominal gap is not mistaken for an exact purchasing-power percentage.
+
+`src/cumulative.js` calculates from monthly **seasonally adjusted** CPI-U (`CPIAUCSL`) and average hourly earnings of all private nonfarm employees (`CES0500000003`):
+
+- Cumulative inflation: `(CPI_t / CPI_start − 1) × 100`.
+- Cumulative nominal earnings: `(AHE_t / AHE_start − 1) × 100`.
+- Cumulative real earnings: `((AHE_t / AHE_start) / (CPI_t / CPI_start) − 1) × 100`.
+
+For example, earnings rising 30% while prices rise 25% means a **4%** real gain: `1.30 / 1.25 − 1`. Calculating directly from levels captures compounding without adding monthly percentages or multiplying overlapping YoY rates. [BLS real earnings methodology](https://www.bls.gov/news.release/realer.tn.htm) uses CPI-U to deflate the all-employee hourly earnings measure. Average earnings can move when the composition of employment changes; this is not a same-worker, median-worker, or household-income series.
+
+The starting month defaults to the first shared usable month within the selected history range. The dropdown permits any shared month in the snapshot. Choosing 1Y, 3Y, 5Y, or ALL above resets that choice to the selected range. The endpoint is the **latest common usable month**, including when just one nominal series is displayed; one source can therefore have a later observation than the comparison endpoint. A user-selected baseline that disappears on a subsequent refresh produces a visible unavailable result instead of silently rebasing.
+
+Monthly, quarterly, and yearly controls select **plotting intervals**, independently of the baseline. Quarterly uses March/June/September/December levels; yearly uses December levels. Every view retains the exact selected start and latest shared endpoint, including an explicitly labelled partial latest quarter/year. They are endpoint samples, not period averages or annualized changes. Totals are unchanged by the plotting interval. Missing monthly observations remain null gaps, with extra gap markers retained during sampling so lines do not bridge missing data. Nonpositive source levels cannot supply a baseline or endpoint.
+
+Controls persist between Inflation and Labor. The all-section print report includes the comparison once, in Inflation, with the selected baseline, interval, series, and totals. Source dates, retrieval times, retained-data warnings, and aging-observation warnings remain visible. The existing MoM and YoY charts are retained to show the current pace of inflation and earnings growth alongside cumulative changes.
+
 The former static ETF quotes, ISM manufacturing/services readings, Conference Board confidence, consensus forecasts, recession probabilities, estimated breakeven job growth, economic-calendar rows, and research commentary do not have a configured verified publishing feed. They are not presented as automatically refreshed values. Adding them requires an actual provider, the applicable publishing rights, a metric definition, and collection/error tests. A provider key alone does not establish redistribution rights. No Alpha Vantage or other market-price integration is enabled by default.
 
 FRED is an aggregator, not a blanket license for all underlying data. Source links and attribution are recorded in the configuration and displayed in the application. The [ICE high-yield series notes](https://fred.stlouisfed.org/series/BAMLH0A0HYM2) restrict publication/distribution; enable collection only after establishing a suitable licensed source and updating the configuration. [ISM terms](https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/pmi/september/) and [Conference Board terms](https://www.conference-board.org/contact/terms-of-use) also restrict reuse. [Freddie Mac mortgage](https://fred.stlouisfed.org/series/MORTGAGE30US), [CBOE VIX](https://fred.stlouisfed.org/series/VIXCLS), and [Michigan sentiment](https://fred.stlouisfed.org/series/UMCSENT) retain their source-specific attribution. Review the original source's current terms when changing coverage or use.

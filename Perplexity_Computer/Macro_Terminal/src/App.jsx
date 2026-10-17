@@ -23,6 +23,7 @@ import {
   TREASURY_MATURITIES,
 } from "./model.js";
 import { useSnapshot } from "./useSnapshot.js";
+import CumulativeComparison from "./CumulativeComparison.jsx";
 
 const TABS = ["Overview", "Rates", "Inflation", "Growth", "Labor", "Risk"];
 const COLORS = ["#71d6a1", "#68c8d9", "#e5bd72", "#ac9ee7"];
@@ -41,7 +42,7 @@ const SECTIONS = {
     eyebrow: "03 / PRICE PRESSURES",
     title: "Inflation & purchasing power",
     subtitle:
-      "Published price indices, with consistent year-over-year calculations.",
+      "Cumulative price changes, purchasing power, and the pace of inflation.",
   },
   Growth: {
     eyebrow: "04 / ECONOMIC ACTIVITY",
@@ -767,7 +768,7 @@ function ResearchPanel({ tab = "Overview" }) {
     </article>
   );
 }
-function Section({ tab, snapshot, range, print = false }) {
+function Section({ tab, snapshot, range, cumulative, print = false }) {
   const info = SECTIONS[tab];
   const props = { snapshot, range, print };
   return (
@@ -851,6 +852,7 @@ function Section({ tab, snapshot, range, print = false }) {
       )}
       {tab === "Inflation" && (
         <>
+          <CumulativeComparison {...props} {...cumulative} />
           <MetricGrid
             print={print}
             snapshot={snapshot}
@@ -935,6 +937,14 @@ function Section({ tab, snapshot, range, print = false }) {
       )}
       {tab === "Labor" && (
         <>
+          {print ? (
+            <p className="cumulative-report-note">
+              Cumulative hourly earnings and purchasing power appear in the
+              Inflation section of this report.
+            </p>
+          ) : (
+            <CumulativeComparison {...props} {...cumulative} />
+          )}
           <MetricGrid
             print={print}
             snapshot={snapshot}
@@ -1128,6 +1138,17 @@ export default function App() {
   const { snapshot, loading, error, checkedAt, refresh } = useSnapshot();
   const [tab, setTab] = useState("Overview");
   const [range, setRange] = useState("3");
+  const [startMonth, setStartMonth] = useState(null);
+  const [plotInterval, setPlotInterval] = useState("monthly");
+  const [cumulativeView, setCumulativeView] = useState("both");
+  const cumulative = {
+    startMonth,
+    interval: plotInterval,
+    view: cumulativeView,
+    onStartMonth: setStartMonth,
+    onInterval: setPlotInterval,
+    onView: setCumulativeView,
+  };
   const [printing, setPrinting] = useState(false);
   const [orientation, setOrientation] = useState("landscape");
   const [printDialog, setPrintDialog] = useState(false);
@@ -1253,7 +1274,10 @@ export default function App() {
                     key={value}
                     className={range === value ? "selected" : ""}
                     aria-pressed={range === value}
-                    onClick={() => setRange(value)}
+                    onClick={() => {
+                      setRange(value);
+                      setStartMonth(null);
+                    }}
                   >
                     {label}
                   </button>
@@ -1314,7 +1338,12 @@ export default function App() {
                 </span>
               </div>
             )}
-          <Section tab={tab} snapshot={snapshot} range={range} />
+          <Section
+            tab={tab}
+            snapshot={snapshot}
+            range={range}
+            cumulative={cumulative}
+          />
           <DataStatus snapshot={snapshot} checkedAt={checkedAt} />
         </main>
         <footer className="footer">
@@ -1386,6 +1415,7 @@ export default function App() {
             tab={name}
             snapshot={snapshot}
             range={range}
+            cumulative={cumulative}
             print
           />
         ))}
