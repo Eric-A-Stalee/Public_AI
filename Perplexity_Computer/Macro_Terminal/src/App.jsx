@@ -1141,13 +1141,16 @@ export default function App() {
   const [startMonth, setStartMonth] = useState(null);
   const [plotInterval, setPlotInterval] = useState("monthly");
   const [cumulativeView, setCumulativeView] = useState("both");
+  const [cumulativeScale, setCumulativeScale] = useState("index");
   const cumulative = {
     startMonth,
     interval: plotInterval,
     view: cumulativeView,
+    scale: cumulativeScale,
     onStartMonth: setStartMonth,
     onInterval: setPlotInterval,
     onView: setCumulativeView,
+    onScale: setCumulativeScale,
   };
   const [printing, setPrinting] = useState(false);
   const [orientation, setOrientation] = useState("landscape");

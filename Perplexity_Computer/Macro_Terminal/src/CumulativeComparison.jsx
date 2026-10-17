@@ -43,6 +43,9 @@ function percentage(value) {
     suffix: "%",
   });
 }
+function indexValue(value) {
+  return formatValue(value, { digits: 2 });
+}
 function CumulativeTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -53,13 +56,17 @@ function CumulativeTooltip({ active, payload, label }) {
           <span style={{ color: entry.stroke }}>
             {SERIES[entry.dataKey].label}
           </span>
-          <b>{percentage(entry.value)}</b>
+          <b>
+            {indexValue(entry.payload.indices[entry.dataKey])}
+            {" · "}
+            {percentage(entry.payload.changes[entry.dataKey])}
+          </b>
         </div>
       ))}
     </div>
   );
 }
-function ComparisonPlot({ rows, keys, syncId, print, real = false }) {
+function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
   return (
     <div
       className={`chart-area ${real ? "cumulative-real-area" : "cumulative-main-area"}`}
@@ -67,8 +74,8 @@ function ComparisonPlot({ rows, keys, syncId, print, real = false }) {
       role="group"
       aria-label={
         real
-          ? "Cumulative inflation-adjusted hourly earnings"
-          : "Cumulative percentage change from the selected starting month"
+          ? "Inflation-adjusted hourly earnings index and cumulative change"
+          : "Compounded price and hourly earnings indices and cumulative change"
       }
     >
       <ResponsiveContainer
@@ -105,10 +112,17 @@ function ComparisonPlot({ rows, keys, syncId, print, real = false }) {
             axisLine={false}
             tickLine={false}
             width={62}
+            domain={["auto", "auto"]}
             tick={{ fill: "var(--muted)", fontSize: 10 }}
-            tickFormatter={(value) => `${Number(value.toFixed(1))}%`}
+            tickFormatter={(value) =>
+              `${Number(value.toFixed(1))}${scale === "index" ? "" : "%"}`
+            }
           />
-          <ReferenceLine y={0} stroke="var(--dim)" strokeDasharray="3 3" />
+          <ReferenceLine
+            y={scale === "index" ? 100 : 0}
+            stroke="var(--dim)"
+            strokeDasharray="3 3"
+          />
           <Tooltip
             content={<CumulativeTooltip />}
             cursor={{ stroke: "var(--muted)", strokeDasharray: "3 3" }}
@@ -161,9 +175,11 @@ export default function CumulativeComparison({
   startMonth,
   interval,
   view,
+  scale,
   onStartMonth,
   onInterval,
   onView,
+  onScale,
   print = false,
 }) {
   const id = useId();
@@ -175,9 +191,15 @@ export default function CumulativeComparison({
     () =>
       comparison.rows.map((row) => ({
         ...row,
+        changes: {
+          prices: row.prices,
+          earnings: row.earnings,
+          realEarnings: row.realEarnings,
+        },
+        ...(scale === "index" ? row.indices : {}),
         time: Date.parse(`${row.date}T00:00:00Z`),
       })),
-    [comparison],
+    [comparison, scale],
   );
   const keys =
     view === "prices"
@@ -198,14 +220,13 @@ export default function CumulativeComparison({
     >
       <div className="panel-heading">
         <div>
-          <div className="eyebrow">THE CUMULATIVE VIEW</div>
+          <div className="eyebrow">OUR CHAINED INDEX / START = 100</div>
           <h3 id={`${id}-heading`}>Inflation & hourly earnings, compounded</h3>
-          <p>
-            How consumer prices and average hourly pay have changed since the
-            same starting month.
-          </p>
+          <p>Period changes compounded on a shared starting index of 100.</p>
         </div>
-        <span className="unit-label">% FROM START</span>
+        <span className="unit-label">
+          {scale === "index" ? "INDEX / 100 AT START" : "% FROM START"}
+        </span>
       </div>
       {!print && (
         <div className="cumulative-controls">
@@ -277,6 +298,29 @@ export default function CumulativeComparison({
               ))}
             </div>
           </div>
+          <div className="cumulative-control-group">
+            <span>Values</span>
+            <div
+              className="range-control"
+              role="group"
+              aria-label="Cumulative value scale"
+            >
+              {[
+                ["index", "Index (100)"],
+                ["percent", "% change"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={scale === value}
+                  className={scale === value ? "selected" : ""}
+                  onClick={() => onScale(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
       <p className="cumulative-period" aria-live={print ? undefined : "polite"}>
@@ -285,7 +329,8 @@ export default function CumulativeComparison({
             <strong>
               {start} → {end}
             </strong>{" "}
-            · 0% at start · {INTERVALS[interval]} points
+            · {scale === "index" ? "100 at start" : "0% at start"} ·{" "}
+            {INTERVALS[interval]} points
             {partialEnd && (
               <>
                 {" "}
@@ -310,6 +355,12 @@ export default function CumulativeComparison({
                   {percentage(comparison.totals[key])}
                 </dd>
                 <small>
+                  <span
+                    className="cumulative-index-reading"
+                    data-testid={`cumulative-index-${key}`}
+                  >
+                    Index {indexValue(comparison.indexTotals[key])} · start 100
+                  </span>
                   {key === "prices"
                     ? "Consumer price level"
                     : key === "earnings"
@@ -319,7 +370,13 @@ export default function CumulativeComparison({
               </div>
             ))}
           </dl>
-          <ComparisonPlot rows={rows} keys={keys} syncId={id} print={print} />
+          <ComparisonPlot
+            rows={rows}
+            keys={keys}
+            syncId={id}
+            print={print}
+            scale={scale}
+          />
           <div className="chart-legend">
             {keys.map((key) => (
               <span key={key}>
@@ -335,8 +392,9 @@ export default function CumulativeComparison({
           <div className="cumulative-real-heading">
             <h4>Real hourly earnings</h4>
             <p>
-              Inflation-adjusted pay. Above zero means average hourly earnings
-              have outpaced consumer prices since {start}.
+              Inflation-adjusted pay. Above {scale === "index" ? "100" : "zero"}{" "}
+              means average hourly earnings have outpaced consumer prices since{" "}
+              {start}.
             </p>
           </div>
           <ComparisonPlot
@@ -344,6 +402,7 @@ export default function CumulativeComparison({
             keys={["realEarnings"]}
             syncId={id}
             print={print}
+            scale={scale}
             real
           />
           <p className="cumulative-caption">
@@ -351,8 +410,8 @@ export default function CumulativeComparison({
               ? "Only one shared month is available for this starting point. "
               : ""}
             {interval === "monthly"
-              ? "Monthly levels from the selected start through the latest shared month."
-              : `Calendar ${periodName}-end months, plus the selected start and latest shared month.`}{" "}
+              ? "Monthly index values through the latest shared month."
+              : `Calendar ${periodName}-end index values, plus the selected start and latest shared month.`}{" "}
             Changing the plot interval preserves the total change. Missing
             observations remain gaps.
           </p>
@@ -417,26 +476,40 @@ export default function CumulativeComparison({
         <details className="chart-data cumulative-method">
           <summary>Calculation and chart observations</summary>
           <p>
-            Inflation = (CPI / starting CPI − 1) × 100. Earnings = (hourly pay /
-            starting hourly pay − 1) × 100. Real earnings = ((hourly pay /
-            starting hourly pay) / (CPI / starting CPI) − 1) × 100. For example,
-            pay rising 30% while prices rise 25% means a 4% real gain.
-            Calculations use the source levels, so overlapping year-over-year
-            rates are never compounded.
+            Each index starts at 100. Next index = previous index × (1 + period
+            percentage change / 100). Changes of +3%, +2%, and +9% produce 100 →
+            103 → 105.06 → 114.5154, a cumulative gain of 14.5154%. Full
+            precision is retained throughout; displayed values are rounded.
+          </p>
+          <p>
+            Price and earnings changes come from successive monthly CPI and
+            hourly-pay observations. The real earnings index compounds changes
+            in hourly pay divided by CPI: each period's real growth factor is (1
+            + earnings growth) / (1 + price growth), using decimal rates. For
+            example, 30% earnings growth with 25% inflation gives a real index
+            of 104, or +4%. We never chain overlapping year-over-year rates.
+          </p>
+          <p>
+            Missing months remain gaps. When a source resumes, its index links
+            the total change from the last usable observation across that span;
+            no monthly rates are invented for the missing months.
           </p>
           <p>
             Both charts end at the latest month with usable values for both
             sources, even in a single-series view. The starting month can be
             selected from all shared observations in this snapshot. Choosing a
             history range above resets the starting month to that range.
-            Quarterly and yearly views sample monthly levels; they are not
-            period averages or annualized rates. Seasonal adjustments and
-            historical revisions can change past results.
+            Quarterly and yearly views sample the compounded monthly indices;
+            they are not period averages or annualized rates. Seasonal
+            adjustments and historical revisions can change past results.
           </p>
           <div className="table-scroll">
             <table>
               <caption>
-                Latest 12 plotted months · cumulative change (%)
+                Latest 12 plotted months ·{" "}
+                {scale === "index"
+                  ? "index (start = 100)"
+                  : "cumulative change (%)"}
               </caption>
               <thead>
                 <tr>
@@ -461,7 +534,11 @@ export default function CumulativeComparison({
                             : ""}
                       </td>
                       {Object.keys(SERIES).map((key) => (
-                        <td key={key}>{percentage(row[key])}</td>
+                        <td key={key}>
+                          {scale === "index"
+                            ? indexValue(row[key])
+                            : percentage(row[key])}
+                        </td>
                       ))}
                     </tr>
                   ))}

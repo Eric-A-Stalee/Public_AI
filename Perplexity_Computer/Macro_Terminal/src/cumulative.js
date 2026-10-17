@@ -1,10 +1,39 @@
-/** Cumulative comparisons use raw monthly levels; all returned changes are percent. */
+/** Base-100 chained indices and percentage changes derived from raw monthly levels. */
 const PRICE_SERIES = "CPIAUCSL";
 const EARNINGS_SERIES = "CES0500000003";
 const INTERVALS = new Set(["monthly", "quarterly", "yearly"]);
 const positive = (value) =>
   typeof value === "number" && Number.isFinite(value) && value > 0;
 const finiteOrNull = (value) => (Number.isFinite(value) ? value : null);
+
+/** Apply one non-overlapping period change, preserving full numeric precision. */
+export function compoundIndex(previousIndex, periodPercent) {
+  if (
+    typeof previousIndex !== "number" ||
+    !Number.isFinite(previousIndex) ||
+    typeof periodPercent !== "number" ||
+    !Number.isFinite(periodPercent)
+  )
+    return null;
+  return finiteOrNull(previousIndex * (1 + periodPercent / 100));
+}
+
+function chainFrom(initialLevel) {
+  let previousLevel = initialLevel;
+  let previousIndex = 100;
+  return (level) => {
+    if (!positive(level) || !positive(previousLevel)) return null;
+    const periodPercent = (level / previousLevel - 1) * 100;
+    const next = compoundIndex(previousIndex, periodPercent);
+    if (next !== null) {
+      previousLevel = level;
+      previousIndex = next;
+    }
+    // A missing month never advances the anchor. The next observation applies
+    // its total change since the last known level, without inventing gap rates.
+    return next;
+  };
+}
 
 function monthOf(date) {
   if (typeof date !== "string") return null;
@@ -71,6 +100,7 @@ export function cumulativeComparison(
     endMonth,
     rows: [],
     totals: null,
+    indexTotals: null,
     error: null,
   };
   const fail = (error) => ({ ...result, error });
@@ -103,6 +133,9 @@ export function cumulativeComparison(
 
   const initialPrice = prices.get(startMonth);
   const initialEarnings = earnings.get(startMonth);
+  const chainPrices = chainFrom(initialPrice);
+  const chainEarnings = chainFrom(initialEarnings);
+  const chainRealEarnings = chainFrom(initialEarnings / initialPrice);
   const monthly = [];
   for (
     let index = monthNumber(startMonth);
@@ -112,18 +145,21 @@ export function cumulativeComparison(
     const month = monthFromNumber(index);
     const price = prices.get(month);
     const wage = earnings.get(month);
-    const priceRatio = positive(price) ? price / initialPrice : null;
-    const earningsRatio = positive(wage) ? wage / initialEarnings : null;
+    const indices = {
+      prices: chainPrices(price),
+      earnings: chainEarnings(wage),
+      realEarnings: chainRealEarnings(
+        positive(price) && positive(wage) ? wage / price : null,
+      ),
+    };
     const endpoint = month === startMonth || month === endMonth;
     monthly.push({
       date: `${month}-01`,
-      prices: priceRatio === null ? null : finiteOrNull((priceRatio - 1) * 100),
-      earnings:
-        earningsRatio === null ? null : finiteOrNull((earningsRatio - 1) * 100),
+      indices,
+      prices: indices.prices === null ? null : indices.prices - 100,
+      earnings: indices.earnings === null ? null : indices.earnings - 100,
       realEarnings:
-        priceRatio === null || earningsRatio === null || priceRatio <= 0
-          ? null
-          : finiteOrNull((earningsRatio / priceRatio - 1) * 100),
+        indices.realEarnings === null ? null : indices.realEarnings - 100,
       partial: endpoint && !isIntervalEnd(month, interval),
     });
   }
@@ -149,5 +185,6 @@ export function cumulativeComparison(
       earnings: last.earnings,
       realEarnings: last.realEarnings,
     },
+    indexTotals: { ...last.indices },
   };
 }

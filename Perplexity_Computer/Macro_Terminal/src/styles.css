@@ -621,6 +621,12 @@ h1 {
   font-size: 8px;
   color: var(--dim);
 }
+.cumulative-index-reading {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
 .cumulative-panel .cumulative-main-area {
   height: 275px;
 }
