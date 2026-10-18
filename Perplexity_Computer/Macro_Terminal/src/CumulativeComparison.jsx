@@ -13,12 +13,35 @@ import metadata from "../config/series.json";
 import { cumulativeComparison } from "./cumulative.js";
 import { formatValue, freshness } from "./model.js";
 
-const SERIES = {
-  prices: { label: "Cumulative inflation", color: "var(--amber)", dash: "6 3" },
-  earnings: { label: "Average hourly earnings", color: "var(--cyan)" },
-  realEarnings: { label: "Real hourly earnings", color: "var(--green)" },
+const BASES = {
+  median: {
+    label: "Median weekly earnings",
+    source: "LES1252881500Q",
+    cadence: "quarter",
+    payUnit: "week",
+    payAdjective: "weekly",
+    realLabel: "Real median weekly earnings",
+  },
+  average: {
+    label: "Average hourly earnings",
+    source: "CES0500000003",
+    cadence: "month",
+    payUnit: "hour",
+    payAdjective: "hourly",
+    realLabel: "Real hourly earnings",
+  },
 };
-const SOURCES = ["CPIAUCSL", "CES0500000003"];
+function seriesDefinitions(basis) {
+  return {
+    prices: {
+      label: "Cumulative inflation",
+      color: "var(--amber)",
+      dash: "6 3",
+    },
+    earnings: { label: basis.label, color: "var(--cyan)" },
+    realEarnings: { label: basis.realLabel, color: "var(--green)" },
+  };
+}
 const INTERVALS = {
   monthly: "Monthly",
   quarterly: "Quarterly",
@@ -36,6 +59,13 @@ function monthLabel(value) {
     year: "numeric",
   }).format(date);
 }
+function periodLabel(value, earningsBasis) {
+  if (!value || earningsBasis !== "median") return monthLabel(value);
+  const date = new Date(
+    typeof value === "number" ? value : `${value.slice(0, 7)}-01T00:00:00Z`,
+  );
+  return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
+}
 function percentage(value) {
   return formatValue(value, {
     digits: 2,
@@ -46,15 +76,15 @@ function percentage(value) {
 function indexValue(value) {
   return formatValue(value, { digits: 2 });
 }
-function CumulativeTooltip({ active, payload, label }) {
+function CumulativeTooltip({ active, payload, label, series, earningsBasis }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="chart-tooltip">
-      <strong>{monthLabel(label)}</strong>
+      <strong>{periodLabel(label, earningsBasis)}</strong>
       {payload.map((entry) => (
         <div key={entry.dataKey}>
           <span style={{ color: entry.stroke }}>
-            {SERIES[entry.dataKey].label}
+            {series[entry.dataKey].label}
           </span>
           <b>
             {indexValue(entry.payload.indices[entry.dataKey])}
@@ -66,7 +96,17 @@ function CumulativeTooltip({ active, payload, label }) {
     </div>
   );
 }
-function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
+function ComparisonPlot({
+  rows,
+  keys,
+  syncId,
+  print,
+  scale,
+  series,
+  basis,
+  earningsBasis,
+  real = false,
+}) {
   return (
     <div
       className={`chart-area ${real ? "cumulative-real-area" : "cumulative-main-area"}`}
@@ -74,8 +114,8 @@ function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
       role="group"
       aria-label={
         real
-          ? "Inflation-adjusted hourly earnings index and cumulative change"
-          : "Compounded price and hourly earnings indices and cumulative change"
+          ? `Inflation-adjusted ${basis.label.toLowerCase()} index and cumulative change`
+          : `Compounded price and ${basis.label.toLowerCase()} indices and cumulative change`
       }
     >
       <ResponsiveContainer
@@ -105,8 +145,13 @@ function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
             axisLine={false}
             tickLine={false}
             minTickGap={50}
+            ticks={
+              earningsBasis === "median"
+                ? rows.map((row) => row.time)
+                : undefined
+            }
             tick={{ fill: "var(--muted)", fontSize: 10 }}
-            tickFormatter={monthLabel}
+            tickFormatter={(value) => periodLabel(value, earningsBasis)}
           />
           <YAxis
             axisLine={false}
@@ -124,17 +169,22 @@ function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
             strokeDasharray="3 3"
           />
           <Tooltip
-            content={<CumulativeTooltip />}
+            content={
+              <CumulativeTooltip
+                series={series}
+                earningsBasis={earningsBasis}
+              />
+            }
             cursor={{ stroke: "var(--muted)", strokeDasharray: "3 3" }}
           />
           {keys.map((key) => (
             <Line
               key={key}
               dataKey={key}
-              name={SERIES[key].label}
+              name={series[key].label}
               type="linear"
-              stroke={SERIES[key].color}
-              strokeDasharray={SERIES[key].dash}
+              stroke={series[key].color}
+              strokeDasharray={series[key].dash}
               strokeWidth={print ? 2.5 : 2}
               dot={({ cx, cy, index }) => {
                 const isolated =
@@ -154,7 +204,7 @@ function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
                     cx={cx}
                     cy={cy}
                     r={2.5}
-                    fill={SERIES[key].color}
+                    fill={series[key].color}
                   />
                 );
               }}
@@ -172,6 +222,9 @@ function ComparisonPlot({ rows, keys, syncId, print, scale, real = false }) {
 export default function CumulativeComparison({
   snapshot,
   range,
+  earningsBasis = "median",
+  basisChangeNotice,
+  onEarningsBasis,
   startMonth,
   interval,
   view,
@@ -183,9 +236,20 @@ export default function CumulativeComparison({
   print = false,
 }) {
   const id = useId();
+  const basis = BASES[earningsBasis];
+  const isMedian = earningsBasis === "median";
+  const series = useMemo(() => seriesDefinitions(basis), [basis]);
+  const sources = ["CPIAUCSL", basis.source];
+  const formatPeriod = (value) => periodLabel(value, earningsBasis);
   const comparison = useMemo(
-    () => cumulativeComparison(snapshot, { startMonth, range, interval }),
-    [snapshot, startMonth, range, interval],
+    () =>
+      cumulativeComparison(snapshot, {
+        earningsBasis,
+        startMonth,
+        range,
+        interval,
+      }),
+    [snapshot, earningsBasis, startMonth, range, interval],
   );
   const rows = useMemo(
     () =>
@@ -207,8 +271,8 @@ export default function CumulativeComparison({
       : view === "earnings"
         ? ["earnings"]
         : ["prices", "earnings"];
-  const start = monthLabel(comparison.startMonth);
-  const end = monthLabel(comparison.endMonth);
+  const start = formatPeriod(comparison.startMonth);
+  const end = formatPeriod(comparison.endMonth);
   const partialEnd = rows.at(-1)?.partial && interval !== "monthly";
   const periodName = interval === "quarterly" ? "quarter" : "year";
   const hasData = !comparison.error && rows.length > 0;
@@ -221,8 +285,15 @@ export default function CumulativeComparison({
       <div className="panel-heading">
         <div>
           <div className="eyebrow">OUR CHAINED INDEX / START = 100</div>
-          <h3 id={`${id}-heading`}>Inflation & hourly earnings, compounded</h3>
-          <p>Period changes compounded on a shared starting index of 100.</p>
+          <h3 id={`${id}-heading`}>
+            Inflation & {basis.label.toLowerCase()}, compounded
+          </h3>
+          <p>
+            {isMedian
+              ? "Median weekly pay compared with quarterly-average consumer prices."
+              : "Average hourly pay compared with monthly consumer prices."}{" "}
+            Period changes compounded from a shared index of 100.
+          </p>
         </div>
         <span className="unit-label">
           {scale === "index" ? "INDEX / 100 AT START" : "% FROM START"}
@@ -230,8 +301,19 @@ export default function CumulativeComparison({
       </div>
       {!print && (
         <div className="cumulative-controls">
+          <div className="cumulative-start cumulative-measure">
+            <label htmlFor={`${id}-measure`}>Earnings measure</label>
+            <select
+              id={`${id}-measure`}
+              value={earningsBasis}
+              onChange={(event) => onEarningsBasis(event.target.value)}
+            >
+              <option value="median">Median weekly earnings</option>
+              <option value="average">Average hourly earnings</option>
+            </select>
+          </div>
           <div className="cumulative-start">
-            <label htmlFor={`${id}-start`}>Starting month</label>
+            <label htmlFor={`${id}-start`}>Starting {basis.cadence}</label>
             <select
               id={`${id}-start`}
               value={startMonth || ""}
@@ -244,12 +326,12 @@ export default function CumulativeComparison({
               {startMonth &&
                 !comparison.baselineMonths.includes(startMonth) && (
                   <option value={startMonth}>
-                    {monthLabel(startMonth)} (unavailable)
+                    {formatPeriod(startMonth)} (unavailable)
                   </option>
                 )}
               {comparison.baselineMonths.map((month) => (
                 <option key={month} value={month}>
-                  {monthLabel(month)}
+                  {formatPeriod(month)}
                 </option>
               ))}
             </select>
@@ -261,17 +343,19 @@ export default function CumulativeComparison({
               role="group"
               aria-label="Cumulative plotting interval"
             >
-              {Object.entries(INTERVALS).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={interval === value}
-                  className={interval === value ? "selected" : ""}
-                  onClick={() => onInterval(value)}
-                >
-                  {label}
-                </button>
-              ))}
+              {Object.entries(INTERVALS)
+                .filter(([value]) => !isMedian || value !== "monthly")
+                .map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={interval === value}
+                    className={interval === value ? "selected" : ""}
+                    onClick={() => onInterval(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
             </div>
           </div>
           <div className="cumulative-control-group">
@@ -284,7 +368,7 @@ export default function CumulativeComparison({
               {[
                 ["both", "Overlay"],
                 ["prices", "Inflation"],
-                ["earnings", "Hourly earnings"],
+                ["earnings", isMedian ? "Weekly earnings" : "Hourly earnings"],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -323,13 +407,19 @@ export default function CumulativeComparison({
           </div>
         </div>
       )}
+      {!print && basisChangeNotice && (
+        <p className="cumulative-basis-notice" role="status">
+          {basisChangeNotice}
+        </p>
+      )}
       <p className="cumulative-period" aria-live={print ? undefined : "polite"}>
         {hasData ? (
           <>
             <strong>
               {start} → {end}
             </strong>{" "}
-            · {scale === "index" ? "100 at start" : "0% at start"} ·{" "}
+            · {basis.label} ·{" "}
+            {scale === "index" ? "100 at start" : "0% at start"} ·{" "}
             {INTERVALS[interval]} points
             {partialEnd && (
               <>
@@ -345,7 +435,7 @@ export default function CumulativeComparison({
       {hasData ? (
         <>
           <dl className="cumulative-totals">
-            {Object.entries(SERIES).map(([key, definition]) => (
+            {Object.entries(series).map(([key, definition]) => (
               <div key={key}>
                 <dt>{definition.label}</dt>
                 <dd
@@ -364,8 +454,8 @@ export default function CumulativeComparison({
                   {key === "prices"
                     ? "Consumer price level"
                     : key === "earnings"
-                      ? "Nominal pay per hour"
-                      : "Purchasing power per hour"}
+                      ? `Nominal pay per ${basis.payUnit}`
+                      : `Purchasing power per ${basis.payUnit}`}
                 </small>
               </div>
             ))}
@@ -376,25 +466,28 @@ export default function CumulativeComparison({
             syncId={id}
             print={print}
             scale={scale}
+            series={series}
+            basis={basis}
+            earningsBasis={earningsBasis}
           />
           <div className="chart-legend">
             {keys.map((key) => (
               <span key={key}>
                 <i
                   style={{
-                    borderTop: `2px ${key === "prices" ? "dashed" : "solid"} ${SERIES[key].color}`,
+                    borderTop: `2px ${key === "prices" ? "dashed" : "solid"} ${series[key].color}`,
                   }}
                 />
-                {SERIES[key].label}
+                {series[key].label}
               </span>
             ))}
           </div>
           <div className="cumulative-real-heading">
-            <h4>Real hourly earnings</h4>
+            <h4>{basis.realLabel}</h4>
             <p>
               Inflation-adjusted pay. Above {scale === "index" ? "100" : "zero"}{" "}
-              means average hourly earnings have outpaced consumer prices since{" "}
-              {start}.
+              means {basis.label.toLowerCase()} have outpaced consumer prices
+              since {start}.
             </p>
           </div>
           <ComparisonPlot
@@ -403,15 +496,22 @@ export default function CumulativeComparison({
             syncId={id}
             print={print}
             scale={scale}
+            series={series}
+            basis={basis}
+            earningsBasis={earningsBasis}
             real
           />
           <p className="cumulative-caption">
             {rows.length === 1
-              ? "Only one shared month is available for this starting point. "
+              ? `Only one shared ${basis.cadence} is available for this starting point. `
               : ""}
-            {interval === "monthly"
-              ? "Monthly index values through the latest shared month."
-              : `Calendar ${periodName}-end index values, plus the selected start and latest shared month.`}{" "}
+            {isMedian
+              ? interval === "quarterly"
+                ? "Quarterly index values through the latest shared complete quarter."
+                : "Fourth-quarter index values, plus the selected start and latest shared complete quarter."
+              : interval === "monthly"
+                ? "Monthly index values through the latest shared month."
+                : `Calendar ${periodName}-end index values, plus the selected start and latest shared month.`}{" "}
             Changing the plot interval preserves the total change. Missing
             observations remain gaps.
           </p>
@@ -420,35 +520,52 @@ export default function CumulativeComparison({
         <div className="chart-empty cumulative-empty" role="status">
           <p>
             {comparison.error ||
-              "Both CPI and hourly earnings need a usable observation in the same month."}
+              `Both CPI and ${basis.label.toLowerCase()} need a usable observation in the same ${basis.cadence}.`}
           </p>
           <small>
-            Choose an available starting month or check the source status below.
+            Choose an available starting {basis.cadence} or check the source
+            status below.
           </small>
         </div>
       )}
       <p className="cumulative-caveat">
-        Seasonally adjusted CPI-U and average hourly earnings of all private
-        nonfarm employees. Averages can change with the mix of jobs; this does
-        not track the same worker or household income.
+        {isMedian
+          ? "Seasonally adjusted median usual weekly earnings of full-time wage and salary workers aged 16 and over. CPI-U is averaged across all three months of each quarter; incomplete quarters are omitted. No monthly median earnings are estimated."
+          : "Seasonally adjusted CPI-U and average hourly earnings of all private nonfarm employees."}{" "}
+        The workforce mix can change these measures; neither tracks the same
+        worker or household income.
       </p>
       <div className="cumulative-sources">
-        {SOURCES.map((source) => {
+        {sources.map((source) => {
           const status = freshness(snapshot, source, metadata);
           return (
             <div key={source}>
               <a
                 className="source-link"
-                href={metadata[source].sourceUrl}
+                href={
+                  metadata[source]?.sourceUrl ||
+                  `https://fred.stlouisfed.org/series/${source}`
+                }
                 target="_blank"
                 rel="noreferrer"
               >
                 {source === "CPIAUCSL"
                   ? "BLS consumer prices"
-                  : "BLS hourly earnings"}{" "}
+                  : isMedian
+                    ? "BLS median usual weekly earnings"
+                    : "BLS average hourly earnings"}{" "}
                 via FRED ↗
               </a>
-              <span>Latest observation: {monthLabel(status.observedDate)}</span>
+              <span>
+                Latest source{" "}
+                {source === "LES1252881500Q" ? "quarter" : "month"}:{" "}
+                {source === "LES1252881500Q"
+                  ? formatPeriod(status.observedDate)
+                  : monthLabel(status.observedDate)}
+              </span>
+              <span>
+                Comparison ends at shared {basis.cadence}: {end}
+              </span>
               <span>
                 Retrieved:{" "}
                 {status.fetchedAt
@@ -482,39 +599,48 @@ export default function CumulativeComparison({
             precision is retained throughout; displayed values are rounded.
           </p>
           <p>
-            Price and earnings changes come from successive monthly CPI and
-            hourly-pay observations. The real earnings index compounds changes
-            in hourly pay divided by CPI: each period's real growth factor is (1
-            + earnings growth) / (1 + price growth), using decimal rates. For
+            {isMedian
+              ? "Quarterly CPI is the arithmetic mean of all three positive monthly, seasonally adjusted CPI-U levels. Quarterly median usual weekly earnings are used as published. A quarter is unavailable if any CPI month or its earnings observation is missing."
+              : "Price and earnings changes come from successive monthly CPI and average-hourly-pay observations."}{" "}
+            The real earnings index compounds changes in {basis.payAdjective}{" "}
+            pay divided by CPI: each period's real growth factor is (1 +
+            earnings growth) / (1 + price growth), using decimal rates. For
             example, 30% earnings growth with 25% inflation gives a real index
             of 104, or +4%. We never chain overlapping year-over-year rates.
           </p>
           <p>
-            Missing months remain gaps. When a source resumes, its index links
-            the total change from the last usable observation across that span;
-            no monthly rates are invented for the missing months.
+            Missing {isMedian ? "quarters" : "months"} remain gaps. When a
+            source resumes, its index links the total change from the last
+            usable observation across that span; no{" "}
+            {isMedian ? "quarterly" : "monthly"} rates are invented for the
+            missing periods.
+            {isMedian &&
+              " Quarterly earnings are never interpolated into monthly values."}
           </p>
           <p>
-            Both charts end at the latest month with usable values for both
-            sources, even in a single-series view. The starting month can be
-            selected from all shared observations in this snapshot. Choosing a
-            history range above resets the starting month to that range.
-            Quarterly and yearly views sample the compounded monthly indices;
-            they are not period averages or annualized rates. Seasonal
-            adjustments and historical revisions can change past results.
+            Both charts end at the latest shared {basis.cadence} with usable
+            values for both sources, even in a single-series view. The starting{" "}
+            {basis.cadence} can be selected from all shared observations in this
+            snapshot. Choosing a history range resets the baseline to that
+            range; switching the earnings measure also resets the baseline.
+            {isMedian
+              ? " Yearly plots sample fourth-quarter indices, plus the selected start and latest shared complete quarter. The dates label the quarter being measured, not the earnings release date."
+              : " Quarterly and yearly views sample the compounded monthly indices; they are not period averages or annualized rates."}{" "}
+            Seasonal adjustments and historical revisions can change past
+            results.
           </p>
           <div className="table-scroll">
             <table>
               <caption>
-                Latest 12 plotted months ·{" "}
+                Latest 12 plotted {isMedian ? "quarters" : "months"} ·{" "}
                 {scale === "index"
                   ? "index (start = 100)"
                   : "cumulative change (%)"}
               </caption>
               <thead>
                 <tr>
-                  <th>Month</th>
-                  {Object.values(SERIES).map((series) => (
+                  <th>{isMedian ? "Quarter" : "Month"}</th>
+                  {Object.values(series).map((series) => (
                     <th key={series.label}>{series.label}</th>
                   ))}
                 </tr>
@@ -526,14 +652,14 @@ export default function CumulativeComparison({
                   .map((row) => (
                     <tr key={row.date}>
                       <td>
-                        {monthLabel(row.date)}
+                        {formatPeriod(row.date)}
                         {row.date.slice(0, 7) === comparison.startMonth
                           ? " · start"
                           : row.partial
                             ? " · partial"
                             : ""}
                       </td>
-                      {Object.keys(SERIES).map((key) => (
+                      {Object.keys(series).map((key) => (
                         <td key={key}>
                           {scale === "index"
                             ? indexValue(row[key])
@@ -549,11 +675,15 @@ export default function CumulativeComparison({
             — indicates a missing observation. Extra gap markers may appear
             between period endpoints. Methodology:{" "}
             <a
-              href="https://www.bls.gov/news.release/realer.tn.htm"
+              href={
+                isMedian
+                  ? "https://www.bls.gov/news.release/wkyeng.tn.htm"
+                  : "https://www.bls.gov/news.release/realer.tn.htm"
+              }
               target="_blank"
               rel="noreferrer"
             >
-              BLS real earnings ↗
+              {isMedian ? "BLS usual weekly earnings" : "BLS real earnings"} ↗
             </a>
             .
           </p>

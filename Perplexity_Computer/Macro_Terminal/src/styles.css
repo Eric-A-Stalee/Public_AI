@@ -589,6 +589,15 @@ h1 {
 .cumulative-controls .range-control button {
   min-height: 26px;
 }
+.cumulative-basis-notice {
+  margin: 14px 21px 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--amber);
+  background: #242317;
+  color: var(--amber);
+  font-size: 9px;
+  line-height: 1.7;
+}
 .cumulative-period {
   font-size: 10px;
   color: var(--muted);
@@ -719,6 +728,10 @@ h1 {
   }
   .cumulative-start select {
     min-height: 40px;
+  }
+  .cumulative-start,
+  .cumulative-control-group {
+    max-width: 100%;
   }
   .cumulative-sources {
     grid-template-columns: 1fr;
