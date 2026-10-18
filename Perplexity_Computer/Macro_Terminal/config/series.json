@@ -333,6 +333,18 @@
     "category": "labor",
     "notes": "Seasonally adjusted. A year-over-year measure of average hourly earnings, not a Goldman Sachs wage tracker."
   },
+  "LES1252881500Q": {
+    "id": "LES1252881500Q",
+    "label": "Median usual weekly earnings, full-time workers",
+    "unit": "dollars per week",
+    "frequency": "quarterly",
+    "staleAfterDays": 210,
+    "source": "U.S. Bureau of Labor Statistics, Current Population Survey via FRED",
+    "sourceUrl": "https://fred.stlouisfed.org/series/LES1252881500Q",
+    "enabled": true,
+    "category": "labor",
+    "notes": "Nominal median usual weekly earnings of full-time wage and salary workers age 16 and older, seasonally adjusted. Excludes self-employed workers. Observation dates identify quarter starts. This is a weekly earnings median, not an hourly rate or a matched sample of the same workers; hours and workforce composition can change."
+  },
   "ICSA": {
     "id": "ICSA",
     "label": "Initial unemployment insurance claims",

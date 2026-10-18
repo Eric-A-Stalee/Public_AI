@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { compoundIndex, cumulativeComparison } from "../src/cumulative.js";
 
+const averageComparison = (raw, options = {}) =>
+  cumulativeComparison(raw, { earningsBasis: "average", ...options });
+
 const points = (values) =>
   values.map(([date, value]) => ({
     date: date.length === 7 ? `${date}-01` : date,
@@ -30,7 +33,7 @@ function continuous(startYear = 2024, count = 26) {
 }
 
 test("cumulative levels compound and real earnings use the exact ratio, not subtraction", () => {
-  const result = cumulativeComparison(
+  const result = averageComparison(
     snapshot(
       [
         ["2024-01", 100],
@@ -78,7 +81,7 @@ test("normalizes observation dates by month and ends at the latest shared usable
     ],
   );
   const before = structuredClone(raw);
-  const result = cumulativeComparison(raw, { range: "ALL" });
+  const result = averageComparison(raw, { range: "ALL" });
   assert.deepEqual(result.baselineMonths, ["2024-01", "2024-02", "2024-03"]);
   assert.equal(result.startMonth, "2024-01");
   assert.equal(result.endMonth, "2024-03");
@@ -104,16 +107,10 @@ test("automatic range uses the first shared month on or after the calendar cutof
       ["2025-06", 20],
     ],
   );
-  assert.equal(cumulativeComparison(raw).startMonth, "2022-07");
-  assert.equal(
-    cumulativeComparison(raw, { range: "ALL" }).startMonth,
-    "2020-01",
-  );
-  assert.equal(cumulativeComparison(raw, { range: "1" }).startMonth, "2025-06");
-  assert.equal(
-    cumulativeComparison(raw, { range: "10" }).startMonth,
-    "2020-01",
-  );
+  assert.equal(averageComparison(raw).startMonth, "2022-07");
+  assert.equal(averageComparison(raw, { range: "ALL" }).startMonth, "2020-01");
+  assert.equal(averageComparison(raw, { range: "1" }).startMonth, "2025-06");
+  assert.equal(averageComparison(raw, { range: "10" }).startMonth, "2020-01");
 });
 
 test("unavailable or invalid explicit baselines return errors rather than silently rebasing", () => {
@@ -137,7 +134,7 @@ test("unavailable or invalid explicit baselines return errors rather than silent
     "2024-01-01",
     "",
   ]) {
-    const result = cumulativeComparison(raw, { startMonth });
+    const result = averageComparison(raw, { startMonth });
     assert.ok(result.error);
     assert.equal(result.startMonth, startMonth);
     assert.equal(result.endMonth, "2024-03");
@@ -145,7 +142,7 @@ test("unavailable or invalid explicit baselines return errors rather than silent
     assert.equal(result.totals, null);
     assert.equal(result.indexTotals, null);
   }
-  const single = cumulativeComparison(raw, { startMonth: "2024-03" });
+  const single = averageComparison(raw, { startMonth: "2024-03" });
   assert.equal(single.rows.length, 1);
   assert.deepEqual(single.totals, { prices: 0, earnings: 0, realEarnings: 0 });
   assert.deepEqual(single.indexTotals, {
@@ -172,7 +169,7 @@ test("internal absent months, nulls and nonpositive levels remain gaps with no d
       ["2024-06", 22],
     ],
   );
-  const result = cumulativeComparison(raw, { range: "ALL" });
+  const result = averageComparison(raw, { range: "ALL" });
   assert.deepEqual(result.baselineMonths, ["2024-01", "2024-06"]);
   assert.equal(result.rows.length, 6);
   assert.deepEqual(result.rows[1], {
@@ -203,12 +200,12 @@ test("internal absent months, nulls and nonpositive levels remain gaps with no d
 test("quarterly and yearly sampling preserve baseline and partial latest endpoint without changing totals", () => {
   const raw = continuous();
   const options = { startMonth: "2024-02" };
-  const monthly = cumulativeComparison(raw, options);
-  const quarterly = cumulativeComparison(raw, {
+  const monthly = averageComparison(raw, options);
+  const quarterly = averageComparison(raw, {
     ...options,
     interval: "quarterly",
   });
-  const yearly = cumulativeComparison(raw, { ...options, interval: "yearly" });
+  const yearly = averageComparison(raw, { ...options, interval: "yearly" });
   assert.equal(monthly.endMonth, "2026-02");
   assert.ok(monthly.rows.every((row) => row.partial === false));
   assert.deepEqual(
@@ -243,7 +240,7 @@ test("quarterly and yearly sampling preserve baseline and partial latest endpoin
 
 test("completed calendar endpoints are not marked partial or duplicated", () => {
   const raw = continuous(2024, 24);
-  const result = cumulativeComparison(raw, {
+  const result = averageComparison(raw, {
     startMonth: "2024-12",
     interval: "yearly",
   });
@@ -264,9 +261,9 @@ test("downsampling retains off-cycle missing-month markers so charts cannot brid
   raw.series.CES0500000003.observations.find(
     (row) => row.date === "2024-08-01",
   ).value = null;
-  const monthly = cumulativeComparison(raw, { range: "ALL" });
+  const monthly = averageComparison(raw, { range: "ALL" });
   for (const interval of ["quarterly", "yearly"]) {
-    const result = cumulativeComparison(raw, { range: "ALL", interval });
+    const result = averageComparison(raw, { range: "ALL", interval });
     const may = result.rows.find((row) => row.date === "2024-05-01");
     const august = result.rows.find((row) => row.date === "2024-08-01");
     assert.equal(may.prices, null);
@@ -290,7 +287,7 @@ test("missing sources and wholly invalid levels return an honest unavailable res
     snapshot([["2024-01", "100"]], [["2024-01", 20]]),
     snapshot([["2024-02-30", 100]], [["2024-02", 20]]),
   ]) {
-    const result = cumulativeComparison(raw);
+    const result = averageComparison(raw);
     assert.ok(result.error);
     assert.equal(result.endMonth, null);
     assert.equal(result.totals, null);
@@ -303,12 +300,12 @@ test("missing sources and wholly invalid levels return an honest unavailable res
 test("duplicate monthly revisions to missing are not revived and unsupported controls report errors", () => {
   const raw = continuous(2024, 3);
   raw.series.CPIAUCSL.observations.push({ date: "2024-02-29", value: null });
-  const result = cumulativeComparison(raw, { range: "ALL" });
+  const result = averageComparison(raw, { range: "ALL" });
   assert.deepEqual(result.baselineMonths, ["2024-01", "2024-03"]);
   assert.equal(result.rows[1].prices, null);
-  assert.ok(cumulativeComparison(raw, { range: "bogus" }).error);
-  assert.ok(cumulativeComparison(raw, { range: "0" }).error);
-  assert.ok(cumulativeComparison(raw, { interval: "weekly" }).error);
+  assert.ok(averageComparison(raw, { range: "bogus" }).error);
+  assert.ok(averageComparison(raw, { range: "0" }).error);
+  assert.ok(averageComparison(raw, { interval: "weekly" }).error);
 });
 
 test("the explicit +3%, +2%, +9% chain is 100 → 103 → 105.06 → 114.5154", () => {
@@ -327,7 +324,7 @@ test("the explicit +3%, +2%, +9% chain is 100 → 103 → 105.06 → 114.5154", 
 });
 
 test("raw source levels are explicitly chained into their own base-100 indices", () => {
-  const result = cumulativeComparison(
+  const result = averageComparison(
     snapshot(
       [
         ["2024-01", 200],
@@ -360,7 +357,7 @@ test("raw source levels are explicitly chained into their own base-100 indices",
 test("negative growth compounds declines and subsequent recoveries", () => {
   near(compoundIndex(100, -10), 90);
   near(compoundIndex(90, 5), 94.5);
-  const result = cumulativeComparison(
+  const result = averageComparison(
     snapshot(
       [
         ["2024-01", 200],
@@ -399,7 +396,7 @@ test("indices resume across missing months from each last valid anchor and remai
       ["2024-05", 26.62],
     ],
   );
-  const result = cumulativeComparison(raw, { range: "ALL" });
+  const result = averageComparison(raw, { range: "ALL" });
   assert.equal(result.rows[1].indices.prices, null);
   assert.equal(result.rows[1].prices, null);
   assert.equal(result.rows[1].indices.realEarnings, null);
@@ -416,7 +413,7 @@ test("indices resume across missing months from each last valid anchor and remai
   near(result.indexTotals.earnings, 133.1);
   near(result.indexTotals.realEarnings, 88);
   for (const interval of ["quarterly", "yearly"]) {
-    const sampled = cumulativeComparison(raw, { range: "ALL", interval });
+    const sampled = averageComparison(raw, { range: "ALL", interval });
     assert.deepEqual(sampled.indexTotals, result.indexTotals);
     assert.deepEqual(sampled.totals, result.totals);
     assert.deepEqual(
@@ -438,4 +435,205 @@ test("compoundIndex rejects non-finite or nonnumeric operands and overflow", () 
   assert.equal(compoundIndex(Number.MAX_VALUE, 100), null);
   assert.equal(compoundIndex(100, 0), 100);
   assert.equal(compoundIndex(100, -100), 0);
+});
+
+const medianSnapshot = (prices, earnings) => ({
+  series: {
+    CPIAUCSL: { observations: points(prices) },
+    LES1252881500Q: { observations: points(earnings) },
+  },
+});
+
+function quarterlyFixture(startYear = 2023, count = 10) {
+  const prices = [],
+    earnings = [];
+  for (let i = 0; i < count; i += 1) {
+    const year = startYear + Math.floor(i / 4);
+    const first = (i % 4) * 3 + 1;
+    const month = (value) => `${year}-${String(value).padStart(2, "0")}`;
+    // The quarter-end CPI is deliberately different from its quarterly mean.
+    const level = 100 * 1.02 ** i;
+    prices.push(
+      [month(first), level - 10],
+      [month(first + 1), level],
+      [month(first + 2), level + 10],
+    );
+    earnings.push([month(first), 1000 * 1.03 ** i]);
+  }
+  return medianSnapshot(prices, earnings);
+}
+
+test("median defaults to quarterly data and aligns three-month CPI averages, not quarter-start or end values", () => {
+  const raw = medianSnapshot(
+    [
+      ["2024-01", 90],
+      ["2024-02", 100],
+      ["2024-03", 110],
+      ["2024-04", 110],
+      ["2024-05", 125],
+      ["2024-06", 140],
+    ],
+    [
+      ["2024-01", 1000],
+      ["2024-04", 1300],
+    ],
+  );
+  const before = structuredClone(raw);
+  const result = cumulativeComparison(raw);
+  assert.equal(result.error, null);
+  assert.equal(result.earningsBasis, "median");
+  assert.equal(result.earningsSeries, "LES1252881500Q");
+  assert.equal(result.frequency, "quarterly");
+  assert.equal(result.interval, "quarterly");
+  assert.deepEqual(result.baselineMonths, ["2024-01", "2024-04"]);
+  assert.deepEqual(
+    result.rows.map(({ date }) => date),
+    ["2024-01-01", "2024-04-01"],
+  );
+  assert.ok(result.rows.every(({ partial }) => !partial));
+  assert.deepEqual(result.rows[0].indices, {
+    prices: 100,
+    earnings: 100,
+    realEarnings: 100,
+  });
+  near(result.indexTotals.prices, 125);
+  near(result.indexTotals.earnings, 130);
+  near(result.indexTotals.realEarnings, 104);
+  near(result.totals.realEarnings, 4);
+  assert.deepEqual(raw, before);
+});
+
+test("median explicitly compounds the requested +3%, +2%, +9% earnings chain without intermediate rounding", () => {
+  const raw = quarterlyFixture(2024, 4);
+  [1000, 1030, 1050.6, 1145.154].forEach((value, index) => {
+    raw.series.LES1252881500Q.observations[index].value = value;
+  });
+  const result = cumulativeComparison(raw, { range: "ALL" });
+  [100, 103, 105.06, 114.5154].forEach((expected, index) =>
+    near(result.rows[index].indices.earnings, expected),
+  );
+  near(result.indexTotals.earnings, 114.5154);
+  near(result.totals.earnings, 14.5154);
+  near(result.indexTotals.realEarnings, 114.5154 / 1.02 ** 3);
+});
+
+test("incomplete CPI quarters and unpublished median quarters cannot become a shared endpoint or baseline", () => {
+  const raw = quarterlyFixture(2024, 4);
+  raw.series.CPIAUCSL.observations.pop(); // Missing December, despite Q4 earnings.
+  raw.series.LES1252881500Q.observations[2].value = null; // Q3 unreported.
+  const result = cumulativeComparison(raw, { range: "ALL" });
+  assert.equal(result.endMonth, "2024-04");
+  assert.deepEqual(result.baselineMonths, ["2024-01", "2024-04"]);
+  assert.equal(result.rows.length, 2);
+  for (const startMonth of ["2024-02", "2024-07", "2024-10"]) {
+    const invalid = cumulativeComparison(raw, { startMonth });
+    assert.match(invalid.error, /baseline quarter/);
+    assert.equal(invalid.startMonth, startMonth);
+    assert.equal(invalid.indexTotals, null);
+  }
+});
+
+test("missing quarterly CPI or earnings remains a gap and subsequent indices resume the full span", () => {
+  const raw = quarterlyFixture(2024, 6);
+  raw.series.CPIAUCSL.observations.find(
+    ({ date }) => date === "2024-05-01",
+  ).value = null;
+  raw.series.LES1252881500Q.observations.find(
+    ({ date }) => date === "2024-07-01",
+  ).value = null;
+  const quarterly = cumulativeComparison(raw, { range: "ALL" });
+  assert.equal(quarterly.rows[1].prices, null);
+  near(quarterly.rows[1].indices.earnings, 103);
+  assert.equal(quarterly.rows[1].realEarnings, null);
+  assert.equal(quarterly.rows[2].earnings, null);
+  near(quarterly.rows[2].indices.prices, 104.04);
+  assert.equal(quarterly.rows[2].realEarnings, null);
+  near(quarterly.rows[3].indices.realEarnings, 100 * (1.03 / 1.02) ** 3);
+  near(quarterly.indexTotals.earnings, 100 * 1.03 ** 5);
+  const yearly = cumulativeComparison(raw, {
+    range: "ALL",
+    interval: "yearly",
+  });
+  for (const date of ["2024-04-01", "2024-07-01"]) {
+    assert.deepEqual(
+      yearly.rows.find((row) => row.date === date),
+      quarterly.rows.find((row) => row.date === date),
+    );
+  }
+  assert.deepEqual(yearly.indexTotals, quarterly.indexTotals);
+});
+
+test("median yearly sampling uses Q4 and retains baseline and latest complete quarter without inventing annual medians", () => {
+  const raw = quarterlyFixture();
+  const quarterly = cumulativeComparison(raw, { startMonth: "2023-04" });
+  const yearly = cumulativeComparison(raw, {
+    startMonth: "2023-04",
+    interval: "yearly",
+  });
+  assert.deepEqual(
+    yearly.rows.map(({ date, partial }) => [date, partial]),
+    [
+      ["2023-04-01", true],
+      ["2023-10-01", false],
+      ["2024-10-01", false],
+      ["2025-04-01", true],
+    ],
+  );
+  assert.deepEqual(yearly.totals, quarterly.totals);
+  assert.deepEqual(yearly.indexTotals, quarterly.indexTotals);
+  const completed = cumulativeComparison(quarterlyFixture(2024, 4), {
+    range: "ALL",
+    interval: "yearly",
+  });
+  assert.equal(completed.rows.at(-1).partial, false);
+});
+
+test("median automatic ranges and a single shared quarter retain an honest base of 100", () => {
+  const raw = quarterlyFixture();
+  assert.equal(cumulativeComparison(raw, { range: "1" }).startMonth, "2024-04");
+  assert.equal(
+    cumulativeComparison(raw, { range: "ALL" }).startMonth,
+    "2023-01",
+  );
+  const single = cumulativeComparison(raw, { startMonth: "2025-04" });
+  assert.equal(single.rows.length, 1);
+  assert.deepEqual(single.indexTotals, {
+    prices: 100,
+    earnings: 100,
+    realEarnings: 100,
+  });
+  assert.deepEqual(single.totals, { prices: 0, earnings: 0, realEarnings: 0 });
+});
+
+test("median rejects synthetic monthly views, unknown measures and unavailable data without falling back to the average", () => {
+  const raw = quarterlyFixture();
+  assert.match(
+    cumulativeComparison(raw, { interval: "monthly" }).error,
+    /published quarterly/,
+  );
+  assert.match(
+    cumulativeComparison(raw, { earningsBasis: "invalid" }).error,
+    /Choose median/,
+  );
+  assert.match(cumulativeComparison(continuous()).error, /No shared quarter/);
+  const missing = cumulativeComparison({
+    series: { LES1252881500Q: raw.series.LES1252881500Q },
+  });
+  assert.equal(missing.endMonth, null);
+  assert.equal(missing.totals, null);
+  assert.deepEqual(missing.rows, []);
+});
+
+test("quarterly observations keep missing revisions and ignore off-cycle records", () => {
+  const raw = quarterlyFixture(2024, 4);
+  raw.series.LES1252881500Q.observations.push(
+    { date: "2024-04-01", value: null },
+    { date: "2024-05-01", value: 9999 },
+  );
+  raw.series.CPIAUCSL.observations.push({ date: "2024-08-01", value: null });
+  const result = cumulativeComparison(raw, { range: "ALL" });
+  assert.deepEqual(result.baselineMonths, ["2024-01", "2024-10"]);
+  assert.equal(result.rows[1].earnings, null);
+  assert.equal(result.rows[2].prices, null);
+  near(result.indexTotals.earnings, 100 * 1.03 ** 3);
 });

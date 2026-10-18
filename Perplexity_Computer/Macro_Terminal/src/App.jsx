@@ -939,8 +939,12 @@ function Section({ tab, snapshot, range, cumulative, print = false }) {
         <>
           {print ? (
             <p className="cumulative-report-note">
-              Cumulative hourly earnings and purchasing power appear in the
-              Inflation section of this report.
+              Cumulative{" "}
+              {cumulative.earningsBasis === "median"
+                ? "median weekly"
+                : "average hourly"}{" "}
+              earnings and purchasing power appear in the Inflation section of
+              this report.
             </p>
           ) : (
             <CumulativeComparison {...props} {...cumulative} />
@@ -1139,16 +1143,36 @@ export default function App() {
   const [tab, setTab] = useState("Overview");
   const [range, setRange] = useState("3");
   const [startMonth, setStartMonth] = useState(null);
-  const [plotInterval, setPlotInterval] = useState("monthly");
+  const [earningsBasis, setEarningsBasis] = useState("median");
+  const [plotIntervals, setPlotIntervals] = useState({
+    median: "quarterly",
+    average: "monthly",
+  });
+  const [basisChangeNotice, setBasisChangeNotice] = useState(null);
   const [cumulativeView, setCumulativeView] = useState("both");
   const [cumulativeScale, setCumulativeScale] = useState("index");
+  function changeEarningsBasis(nextBasis) {
+    if (nextBasis === earningsBasis) return;
+    setEarningsBasis(nextBasis);
+    setStartMonth(null);
+    setBasisChangeNotice(
+      `Earnings measure changed to ${nextBasis === "median" ? "median weekly earnings" : "average hourly earnings"}. Starting ${nextBasis === "median" ? "quarter" : "month"} reset to the automatic range start; the comparison period may change because the measures have different release schedules.`,
+    );
+  }
   const cumulative = {
+    earningsBasis,
+    basisChangeNotice,
     startMonth,
-    interval: plotInterval,
+    interval: plotIntervals[earningsBasis],
     view: cumulativeView,
     scale: cumulativeScale,
-    onStartMonth: setStartMonth,
-    onInterval: setPlotInterval,
+    onEarningsBasis: changeEarningsBasis,
+    onStartMonth: (value) => {
+      setStartMonth(value);
+      setBasisChangeNotice(null);
+    },
+    onInterval: (value) =>
+      setPlotIntervals((previous) => ({ ...previous, [earningsBasis]: value })),
     onView: setCumulativeView,
     onScale: setCumulativeScale,
   };
@@ -1280,6 +1304,7 @@ export default function App() {
                     onClick={() => {
                       setRange(value);
                       setStartMonth(null);
+                      setBasisChangeNotice(null);
                     }}
                   >
                     {label}
